@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-accent: var(--font-instrument-serif), Georgia, serif;
+
+  --color-ink: #0c0b09;
+  --color-panel: #16130e;
+  --color-raise: #1e1a13;
+  --color-line: #2f2919;
+  --color-fog: #a89c86;
+  --color-snow: #f7f2e9;
+  --color-honey: #ffc145;
+  --color-honey-dim: #d99e2b;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: var(--color-snow);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-honey);
+  color: var(--color-ink);
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
