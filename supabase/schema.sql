@@ -16,6 +16,8 @@ create table if not exists public.rooms (
   host_key_hash text not null,
   status      text not null default 'open' check (status in ('open', 'generating', 'done')),
   results     jsonb,
+  -- optional pitch deadline: generation auto-fires when it passes (with 2+ ideas)
+  deadline_at timestamptz,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -37,6 +39,29 @@ create unique index if not exists ideas_room_author_unique
 
 create index if not exists ideas_room_idx on public.ideas (room_id);
 
+-- One vote per person per room, changeable (upsert)
+create table if not exists public.votes (
+  id          uuid primary key default gen_random_uuid(),
+  room_id     uuid not null references public.rooms(id) on delete cascade,
+  idea_index  int not null check (idea_index between 0 and 7),
+  voter_key   text not null,
+  created_at  timestamptz not null default now(),
+  unique (room_id, voter_key)
+);
+create index if not exists votes_room_idx on public.votes (room_id);
+
+-- Emoji reactions on visible pitches during the submission phase
+create table if not exists public.reactions (
+  id          uuid primary key default gen_random_uuid(),
+  room_id     uuid not null references public.rooms(id) on delete cascade,
+  idea_id     uuid not null references public.ideas(id) on delete cascade,
+  emoji       text not null check (emoji in ('🔥','💡','😂')),
+  reactor_key text not null,
+  created_at  timestamptz not null default now(),
+  unique (idea_id, reactor_key, emoji)
+);
+create index if not exists reactions_room_idx on public.reactions (room_id);
+
 -- ── Row Level Security ────────────────────────────────────────────
 -- All writes go through the Next.js API routes using the service-role
 -- key (which bypasses RLS).
@@ -48,6 +73,8 @@ create index if not exists ideas_room_idx on public.ideas (room_id);
 --         through /api/progress, which masks per-row privacy flags.
 alter table public.rooms enable row level security;
 alter table public.ideas enable row level security;
+alter table public.votes enable row level security;
+alter table public.reactions enable row level security;
 
 drop policy if exists "anon can read rooms" on public.rooms;
 create policy "anon can read rooms"

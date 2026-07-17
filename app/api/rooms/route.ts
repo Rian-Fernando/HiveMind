@@ -15,7 +15,11 @@ function makeCode(length = 6): string {
 }
 
 export async function POST(req: NextRequest) {
-  let body: { eventName?: string; maxParticipants?: number };
+  let body: {
+    eventName?: string;
+    maxParticipants?: number;
+    deadlineMinutes?: number | null;
+  };
   try {
     body = await req.json();
   } catch {
@@ -35,6 +39,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Optional pitch deadline (host toggle) — 2..180 minutes
+  let deadlineAt: string | null = null;
+  if (body.deadlineMinutes != null) {
+    const mins = Number(body.deadlineMinutes);
+    if (!Number.isInteger(mins) || mins < 2 || mins > 180) {
+      return NextResponse.json(
+        { error: "Deadline must be between 2 and 180 minutes" },
+        { status: 400 }
+      );
+    }
+    deadlineAt = new Date(Date.now() + mins * 60_000).toISOString();
+  }
+
   const supabase = getSupabaseAdmin();
   const hostKey = randomUUID();
 
@@ -46,6 +63,7 @@ export async function POST(req: NextRequest) {
       event_name: eventName,
       max_participants: maxParticipants,
       host_key_hash: sha256(hostKey),
+      deadline_at: deadlineAt,
     });
 
     if (!error) {

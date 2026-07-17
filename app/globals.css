@@ -40,3 +40,29 @@ body {
 .animate-pulse-soft {
   animation: pulse-soft 1.6s ease-in-out infinite;
 }
+
+/* Staggered card reveal when results land */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle lift on interactive cards */
+.card-lift {
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--color-honey) 45%, var(--color-line));
+}

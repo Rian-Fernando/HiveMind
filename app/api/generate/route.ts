@@ -98,14 +98,21 @@ export async function POST(req: NextRequest) {
 
   const submitted = count ?? 0;
   const roomFull = submitted >= room.max_participants;
+  const deadlinePassed =
+    room.deadline_at != null && new Date(room.deadline_at).getTime() <= Date.now();
 
-  // Auto-trigger requires a full room; the host may force early with 2+ ideas
-  if (!roomFull && !(isHost && submitted >= 2)) {
+  // Generation fires when: the room is full, the pitch deadline has passed
+  // (with 2+ ideas), or the host forces it early (with 2+ ideas).
+  const allowed =
+    roomFull || ((deadlinePassed || isHost) && submitted >= 2);
+
+  if (!allowed) {
     return NextResponse.json(
       {
-        error: isHost
-          ? "Need at least 2 ideas before generating"
-          : "Waiting for everyone to submit",
+        error:
+          (isHost || deadlinePassed) && submitted < 2
+            ? "Need at least 2 ideas before generating"
+            : "Waiting for everyone to submit",
       },
       { status: 409 }
     );

@@ -5,8 +5,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { LogoMark } from "@/components/LogoMark";
+import { ResultsView } from "@/components/ResultsView";
+import { getDeviceKey, recordRoomVisit } from "@/lib/device";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
-import type { ProgressEntry, Room } from "@/lib/types";
+import { REACTION_EMOJIS, type ProgressEntry, type Room } from "@/lib/types";
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -18,6 +20,8 @@ export default function RoomPage() {
   const [hostKey, setHostKey] = useState<string | null>(null);
   const [submittedAs, setSubmittedAs] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState("");
+  const [deviceKey, setDeviceKey] = useState("");
+  const [now, setNow] = useState(() => Date.now());
 
   // submission form
   const [name, setName] = useState("");
@@ -30,7 +34,10 @@ export default function RoomPage() {
   // host / generation
   const [genError, setGenError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
   const autoTriggered = useRef(false);
+  const prevStatus = useRef<Room["status"] | null>(null);
+  const historyRecorded = useRef(false);
 
   // ── data loading ─────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -38,7 +45,7 @@ export default function RoomPage() {
     const { data: r, error } = await supabase
       .from("rooms")
       .select(
-        "id, code, event_name, max_participants, status, results, created_at, updated_at"
+        "id, code, event_name, max_participants, status, results, deadline_at, created_at, updated_at"
       )
       .eq("code", code)
       .single();
@@ -47,11 +54,23 @@ export default function RoomPage() {
       setNotFound(true);
       return;
     }
+
+    // fire confetti only on the live transition into "done"
+    if (prevStatus.current && prevStatus.current !== "done" && r.status === "done") {
+      setCelebrate(true);
+    }
+    prevStatus.current = r.status;
     setRoom(r as Room);
+
+    if (!historyRecorded.current) {
+      historyRecorded.current = true;
+      recordRoomVisit(code, r.event_name);
+    }
 
     // idea rows are private — this endpoint returns a masked view
     try {
-      const res = await fetch(`/api/progress?code=${code}`);
+      const device = localStorage.getItem("hm-device") ?? "";
+      const res = await fetch(`/api/progress?code=${code}&device=${device}`);
       if (res.ok) {
         const data = await res.json();
         setParticipants(data.participants ?? []);
@@ -63,15 +82,17 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!code) return;
+    setDeviceKey(getDeviceKey());
     setHostKey(localStorage.getItem(`hm-host-${code}`));
     setSubmittedAs(localStorage.getItem(`hm-submitted-${code}`));
     setShareUrl(`${window.location.origin}/room/${code}`);
     load();
   }, [code, load]);
 
-  // realtime updates (room row bumps on every submission) + polling fallback
+  // realtime (room row bumps on submissions, reactions, votes, deep dives)
+  // + polling fallback — kept alive in "done" so tallies update live
   useEffect(() => {
-    if (!room?.id || room.status === "done") return;
+    if (!room?.id) return;
     const supabase = getSupabaseBrowser();
 
     const channel = supabase
@@ -88,7 +109,14 @@ export default function RoomPage() {
       supabase.removeChannel(channel);
       clearInterval(poll);
     };
-  }, [room?.id, room?.status, load]);
+  }, [room?.id, load]);
+
+  // 1s ticker for the countdown
+  useEffect(() => {
+    if (room?.status !== "open" || !room.deadline_at) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [room?.status, room?.deadline_at]);
 
   // ── trigger generation ───────────────────────────────────────────
   const triggerGenerate = useCallback(
@@ -113,17 +141,19 @@ export default function RoomPage() {
     [code, hostKey, load]
   );
 
-  // auto-trigger the moment everyone has submitted
+  const deadlineMs = room?.deadline_at ? new Date(room.deadline_at).getTime() : null;
+  const deadlinePassed = deadlineMs != null && deadlineMs <= now;
+
+  // auto-trigger: everyone submitted, or the deadline passed with 2+ pitches
   useEffect(() => {
-    if (
-      room?.status === "open" &&
-      participants.length >= room.max_participants &&
-      !autoTriggered.current
-    ) {
+    if (room?.status !== "open" || autoTriggered.current) return;
+    const full = participants.length >= room.max_participants;
+    const deadlineReady = deadlinePassed && participants.length >= 2;
+    if (full || deadlineReady) {
       autoTriggered.current = true;
       triggerGenerate(false);
     }
-  }, [room?.status, room?.max_participants, participants.length, triggerGenerate]);
+  }, [room?.status, room?.max_participants, participants.length, deadlinePassed, triggerGenerate]);
 
   // ── submit an idea ───────────────────────────────────────────────
   async function submitIdea(e: React.FormEvent) {
@@ -146,6 +176,19 @@ export default function RoomPage() {
       setFormError(err instanceof Error ? err.message : "Could not submit");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function toggleReaction(ideaId: string, emoji: string) {
+    try {
+      await fetch("/api/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, ideaId, emoji, device: deviceKey }),
+      });
+      load();
+    } catch {
+      // transient — next poll corrects the view
     }
   }
 
@@ -190,86 +233,17 @@ export default function RoomPage() {
   const submittedCount = participants.length;
   const max = room.max_participants;
 
-  // ── DONE: show results ───────────────────────────────────────────
+  // ── DONE: results, voting, deep dives ────────────────────────────
   if (room.status === "done" && room.results) {
     return (
       <Shell code={code}>
-        <div className="pb-20">
-          <p className="text-xs font-medium uppercase tracking-[0.25em] text-honey">
-            {room.event_name}
-          </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight">
-            {room.results.ideas.length} ideas,{" "}
-            <em className="font-accent italic text-honey">
-              fused from {submittedCount} minds
-            </em>
-          </h1>
-          <p className="mt-3 max-w-xl text-fog">
-            Every concept below borrows one element from each pitch — credited
-            only where people chose to be credited.
-          </p>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-2">
-            {room.results.ideas.map((fi, i) => (
-              <article
-                key={i}
-                className="flex flex-col rounded-2xl border border-line bg-panel p-7"
-              >
-                <span className="text-xs font-bold text-fog/50">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <h2 className="mt-2 text-2xl font-bold">{fi.title}</h2>
-                <p className="mt-1 font-accent text-lg italic text-honey">
-                  {fi.tagline}
-                </p>
-                <p className="mt-4 flex-1 leading-relaxed text-fog">
-                  {fi.description}
-                </p>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {fi.elements.map((el, j) => (
-                    <span
-                      key={j}
-                      className="rounded-full border border-line bg-raise px-3 py-1 text-xs text-fog"
-                    >
-                      <span
-                        className={
-                          el.author === "Anonymous"
-                            ? "italic text-fog"
-                            : "font-semibold text-snow"
-                        }
-                      >
-                        {el.author}
-                      </span>{" "}
-                      ·{" "}
-                      {el.element === "secret ingredient" ? (
-                        <span className="italic">secret ingredient 🤫</span>
-                      ) : (
-                        el.element
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-
-          {room.results.hidden_contributions > 0 && (
-            <p className="mt-8 text-center text-sm italic text-fog">
-              …plus {room.results.hidden_contributions} fully private{" "}
-              {room.results.hidden_contributions === 1
-                ? "contribution"
-                : "contributions"}{" "}
-              fused in without a trace. 🐝
-            </p>
-          )}
-
-          <p className="mt-6 text-center text-xs text-fog/50">
-            Generated by{" "}
-            {room.results.provider === "gemini"
-              ? "Google Gemini"
-              : "Groq · Llama 3.3"}
-          </p>
-        </div>
+        <ResultsView
+          room={room}
+          code={code}
+          deviceKey={deviceKey}
+          celebrate={celebrate}
+          submittedCount={submittedCount}
+        />
       </Shell>
     );
   }
@@ -293,6 +267,8 @@ export default function RoomPage() {
   }
 
   // ── OPEN: submit / wait ──────────────────────────────────────────
+  const remainingMs = deadlineMs != null ? Math.max(0, deadlineMs - now) : null;
+
   return (
     <Shell code={code}>
       <div className="grid gap-10 pb-20 lg:grid-cols-[1fr_360px]">
@@ -319,6 +295,31 @@ export default function RoomPage() {
                 style={{ width: `${(submittedCount / max) * 100}%` }}
               />
             </div>
+            {remainingMs != null && (
+              <p className="mt-3 text-sm text-fog">
+                {remainingMs > 0 ? (
+                  <>
+                    ⏳ Pitch deadline in{" "}
+                    <span
+                      className={`font-bold tabular-nums ${
+                        remainingMs < 60_000 ? "text-red-400" : "text-honey"
+                      }`}
+                    >
+                      {formatCountdown(remainingMs)}
+                    </span>{" "}
+                    — fusion fires automatically at zero
+                  </>
+                ) : submittedCount >= 2 ? (
+                  <span className="text-honey">
+                    ⏳ Deadline reached — fusing with the pitches that made it…
+                  </span>
+                ) : (
+                  <span className="text-red-400">
+                    ⏳ Deadline passed — fusion starts as soon as a 2nd pitch lands
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           {/* form or waiting card */}
@@ -439,10 +440,10 @@ export default function RoomPage() {
                 Pitches so far
               </h3>
               <ul className="mt-3 space-y-3">
-                {participants.map((p, i) => (
+                {participants.map((p) => (
                   <li
-                    key={i}
-                    className="rounded-xl border border-line bg-panel px-5 py-4"
+                    key={p.id}
+                    className="card-lift rounded-xl border border-line bg-panel px-5 py-4"
                   >
                     <span
                       className={
@@ -454,9 +455,31 @@ export default function RoomPage() {
                       {p.label}
                     </span>
                     {p.idea ? (
-                      <p className="mt-1 text-sm leading-relaxed text-fog">
-                        {p.idea}
-                      </p>
+                      <>
+                        <p className="mt-1 text-sm leading-relaxed text-fog">
+                          {p.idea}
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          {REACTION_EMOJIS.map((emoji) => {
+                            const count = p.reactions[emoji] ?? 0;
+                            const mine = p.mine.includes(emoji);
+                            return (
+                              <button
+                                key={emoji}
+                                onClick={() => toggleReaction(p.id, emoji)}
+                                className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                                  mine
+                                    ? "border-honey bg-honey/15 text-snow"
+                                    : "border-line text-fog hover:border-honey"
+                                }`}
+                              >
+                                {emoji}
+                                {count > 0 && <span className="ml-1">{count}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
                     ) : (
                       <p className="mt-1 text-sm italic text-fog/60">
                         🔒 pitch kept private until the reveal… and after it
@@ -514,12 +537,30 @@ export default function RoomPage() {
                   Needs at least 2 submitted ideas.
                 </p>
               )}
+              <a
+                href={`/room/${code}/present`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 block w-full rounded-lg border border-line px-4 py-2.5 text-center text-sm font-semibold transition hover:border-honey hover:text-honey"
+              >
+                Open presenter view ⧉
+              </a>
+              <p className="mt-2 text-xs text-fog/60">
+                Big QR + live progress, made for a projector.
+              </p>
             </div>
           )}
         </aside>
       </div>
     </Shell>
   );
+}
+
+function formatCountdown(ms: number): string {
+  const total = Math.ceil(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function Shell({ children, code }: { children: React.ReactNode; code: string }) {

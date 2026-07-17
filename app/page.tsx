@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
+import { readRoomHistory, type HistoryEntry } from "@/lib/device";
 
 export default function Home() {
   const router = useRouter();
   const [eventName, setEventName] = useState("");
   const [groupSize, setGroupSize] = useState(4);
+  const [useDeadline, setUseDeadline] = useState(false);
+  const [deadlineMinutes, setDeadlineMinutes] = useState(10);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+
+  useEffect(() => {
+    setHistory(readRoomHistory());
+  }, []);
 
   async function createRoom(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +29,11 @@ export default function Home() {
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventName, maxParticipants: groupSize }),
+        body: JSON.stringify({
+          eventName,
+          maxParticipants: groupSize,
+          deadlineMinutes: useDeadline ? deadlineMinutes : null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
@@ -129,6 +142,35 @@ export default function Home() {
                 className="w-full rounded-lg border border-line bg-raise px-4 py-3 text-snow focus:border-honey focus:outline-none"
               />
             </div>
+            <div className="rounded-xl border border-line bg-raise/50 p-4">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span className="text-sm">
+                  <span className="font-semibold">Pitch deadline</span>
+                  <span className="block text-fog">
+                    Optional — fusion auto-fires when time runs out
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={useDeadline}
+                  onChange={(e) => setUseDeadline(e.target.checked)}
+                  className="h-4 w-4 accent-[#f6b93b]"
+                />
+              </label>
+              {useDeadline && (
+                <select
+                  value={deadlineMinutes}
+                  onChange={(e) => setDeadlineMinutes(Number(e.target.value))}
+                  className="mt-3 w-full rounded-lg border border-line bg-raise px-4 py-2.5 text-sm text-snow focus:border-honey focus:outline-none"
+                >
+                  {[5, 10, 15, 30, 60].map((m) => (
+                    <option key={m} value={m}>
+                      {m} minutes
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
             <button
               type="submit"
               disabled={busy}
@@ -158,6 +200,29 @@ export default function Home() {
               Join
             </button>
           </form>
+
+          {history.length > 0 && (
+            <div className="mt-6 border-t border-line pt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-fog">
+                Your recent rooms
+              </h3>
+              <ul className="mt-3 space-y-2">
+                {history.slice(0, 5).map((h) => (
+                  <li key={h.code}>
+                    <Link
+                      href={`/room/${h.code}`}
+                      className="flex items-center justify-between rounded-lg border border-line px-4 py-2.5 text-sm transition hover:border-honey"
+                    >
+                      <span className="truncate text-snow">{h.eventName}</span>
+                      <span className="ml-3 shrink-0 text-xs tracking-widest text-fog">
+                        {h.code}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </section>
     </main>

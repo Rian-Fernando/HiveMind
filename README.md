@@ -11,21 +11,38 @@ Live demo: _(add your Vercel URL here)_ · Built by [Rian Fernando](https://rian
 ## How it works
 
 ```
-Host creates room ──► gets link + QR + 6-letter code
+Host creates room ──► link + QR + 6-letter code (+ optional pitch countdown)
         │
         ▼
 Teammates open link ──► each pitches + picks privacy:
         │                 name shown/hidden · idea shown/hidden
-        ▼  (live pitch feed via Supabase Realtime)
+        ▼  (live pitch feed + 🔥💡😂 reactions via Supabase Realtime)
         │
-Last idea lands ──► AI auto-triggers (host can also force early)
+Last idea lands (or the countdown hits zero, or the host forces it)
         │
         ▼
 Gemini (primary) ──fails?──► Groq (fallback)
         │
         ▼
 4 fused ideas, credited per each person's privacy choice
+        │
+        ▼
+The human part: argue, vote (live tallies, 👑 leader), and pull up an
+AI build plan per idea — MVP, stack, a role per teammate, first hour
 ```
+
+## Features
+
+- **Rooms** — shareable link, client-side QR code, and a readable 6-letter code
+- **Per-person privacy** — hide your name, your idea text, or both (see table below)
+- **Pitch countdown (optional)** — host sets 5–60 min; fusion auto-fires at zero with 2+ pitches
+- **Live pitch feed** — visible pitches stream in with emoji reactions while you wait
+- **AI fusion** — one element from every pitch, combined into 4 new concepts
+- **Voting round** — one changeable vote per device, live tallies, leader crowned 👑
+- **Build plans** — per-idea deep dive (MVP features, tech stack, role split, stretch goals, first hour) generated on demand and cached for the whole room, shown in a modal
+- **Presenter view** — `/room/CODE/present`: giant QR + live counter for a projector, then big result cards with live votes
+- **Export** — copy results as Markdown or download a `.md`, including votes and build plans
+- **Confetti & polish** — reveal animation, staggered cards, recent-rooms history on the landing page
 
 ## The privacy model
 
@@ -113,20 +130,29 @@ Open http://localhost:3000, create a room, then open the room link in a second b
 
 ```
 app/
-  page.tsx                 landing — create or join a room
-  room/[code]/page.tsx     the room: pitch + privacy toggles, live feed,
-                           host panel, results
-  api/rooms/route.ts       POST — create room (code + hashed host key)
-  api/ideas/route.ts       POST — submit an idea (validation + privacy flags)
-  api/progress/route.ts    GET  — privacy-masked view of who has pitched what
-  api/generate/route.ts    POST — race-safe AI fusion, Gemini → Groq,
-                           results masked before storage
+  page.tsx                    landing — create/join, deadline toggle, room history
+  room/[code]/page.tsx        the room: pitch + privacy, countdown, live feed
+                              with reactions, host panel
+  room/[code]/present/        presenter view for projectors
+  api/rooms/route.ts          POST — create room (code + hashed host key + deadline)
+  api/ideas/route.ts          POST — submit an idea (validation + privacy flags)
+  api/progress/route.ts       GET  — privacy-masked pitches + reaction tallies
+  api/reactions/route.ts      POST — toggle 🔥💡😂 on a visible pitch
+  api/votes/route.ts          GET/POST — live tallies, one changeable vote per device
+  api/deepdive/route.ts       POST — AI build plan per idea, cached room-wide
+  api/generate/route.ts       POST — race-safe AI fusion, Gemini → Groq,
+                              results masked before storage
+components/
+  ResultsView.tsx             results, voting, build-plan modal, export, confetti
+  LogoMark.tsx                brand mark (inline SVG)
 lib/
-  ai.ts                    prompt building + both providers + fallback
-  supabaseBrowser.ts       anon client (reads rooms only)
-  supabaseAdmin.ts         service-role client (API routes only)
+  ai.ts                       prompts + both providers + fallback (fusion & deep dive)
+  device.ts                   anonymous device key + room history (localStorage)
+  supabaseBrowser.ts          anon client (reads rooms only)
+  supabaseAdmin.ts            service-role client (API routes only)
 supabase/
-  schema.sql               tables, RLS, realtime — run once in Supabase
+  schema.sql                  full schema for fresh installs
+  migration-002-features.sql  upgrade for projects created before voting/reactions
 ```
 
 ## Free-tier limits worth knowing

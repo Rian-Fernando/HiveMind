@@ -1,7 +1,7 @@
-import { FusedIdea } from "./types";
+import { DeepDive, FusedIdea } from "./types";
 
 /**
- * AI idea fusion — primary: Google Gemini (free tier), fallback: Groq (free tier).
+ * AI generation — primary: Google Gemini (free tier), fallback: Groq (free tier).
  * Both are called over plain REST so there are no SDK dependencies.
  * If a model is ever retired, update the constants below.
  */
@@ -20,7 +20,138 @@ export interface LabeledSubmission {
   idea: string;
 }
 
-function buildPrompt(eventName: string, submissions: LabeledSubmission[]): string {
+// ── provider plumbing ────────────────────────────────────────────────
+
+function extractJson<T>(raw: string): T {
+  // Models occasionally wrap JSON in ```json fences despite instructions.
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  return JSON.parse(cleaned) as T;
+}
+
+/** Gemini with constrained decoding — responseSchema guarantees valid JSON. */
+async function callGemini<T>(prompt: string, responseSchema: object): Promise<T> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY not set");
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.9,
+          maxOutputTokens: 16384,
+          responseSchema,
+        },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini returned no text");
+  return extractJson<T>(text);
+}
+
+async function callGroq<T>(prompt: string): Promise<T> {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) throw new Error("GROQ_API_KEY not set");
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0.9,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Groq ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Groq returned no text");
+  return extractJson<T>(text);
+}
+
+/** Try Gemini first; fall back to Groq. Throws only if both fail. */
+async function withFallback<T>(
+  prompt: string,
+  responseSchema: object,
+  validate: (parsed: T) => void
+): Promise<{ provider: "gemini" | "groq"; data: T }> {
+  try {
+    const data = await callGemini<T>(prompt, responseSchema);
+    validate(data);
+    return { provider: "gemini", data };
+  } catch (geminiErr) {
+    console.warn("Gemini failed, falling back to Groq:", geminiErr);
+    try {
+      const data = await callGroq<T>(prompt);
+      validate(data);
+      return { provider: "groq", data };
+    } catch (groqErr) {
+      console.error("Groq also failed:", groqErr);
+      throw new Error(
+        "Both AI providers failed. Check API keys / rate limits and try again."
+      );
+    }
+  }
+}
+
+// ── idea fusion ──────────────────────────────────────────────────────
+
+const FUSION_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    ideas: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          title: { type: "STRING" },
+          tagline: { type: "STRING" },
+          description: { type: "STRING" },
+          elements: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                author: { type: "STRING" },
+                element: { type: "STRING" },
+              },
+              required: ["author", "element"],
+            },
+          },
+        },
+        required: ["title", "tagline", "description", "elements"],
+      },
+    },
+  },
+  required: ["ideas"],
+};
+
+function buildFusionPrompt(
+  eventName: string,
+  submissions: LabeledSubmission[]
+): string {
   const pitches = submissions
     .map((s, i) => `${i + 1}. ${s.label}: "${s.idea.trim()}"`)
     .join("\n");
@@ -54,130 +185,107 @@ Respond with ONLY valid JSON matching exactly this schema (no markdown, no comme
 The "elements" array of every idea must contain one entry per participant (${submissions.length} entries), using each label exactly once.`;
 }
 
-function extractJson(raw: string): { ideas: FusedIdea[] } {
-  // Models occasionally wrap JSON in ```json fences despite instructions.
-  const cleaned = raw
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "");
-  const parsed = JSON.parse(cleaned);
-  if (!Array.isArray(parsed.ideas) || parsed.ideas.length === 0) {
-    throw new Error("AI response missing 'ideas' array");
-  }
-  return parsed;
-}
-
-async function generateWithGemini(prompt: string): Promise<FusedIdea[]> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY not set");
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.9,
-          maxOutputTokens: 16384,
-          // Constrained decoding — guarantees structurally valid JSON.
-          // (Prompt-only JSON instructions occasionally come back malformed
-          // from thinking models, which would burn the primary provider.)
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              ideas: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    title: { type: "STRING" },
-                    tagline: { type: "STRING" },
-                    description: { type: "STRING" },
-                    elements: {
-                      type: "ARRAY",
-                      items: {
-                        type: "OBJECT",
-                        properties: {
-                          author: { type: "STRING" },
-                          element: { type: "STRING" },
-                        },
-                        required: ["author", "element"],
-                      },
-                    },
-                  },
-                  required: ["title", "tagline", "description", "elements"],
-                },
-              },
-            },
-            required: ["ideas"],
-          },
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini returned no text");
-  return extractJson(text).ideas;
-}
-
-async function generateWithGroq(prompt: string): Promise<FusedIdea[]> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) throw new Error("GROQ_API_KEY not set");
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0.9,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Groq ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Groq returned no text");
-  return extractJson(text).ideas;
-}
-
-/**
- * Try Gemini first; if it fails for any reason (rate limit, outage,
- * missing key), fall back to Groq. Throws only if both fail.
- */
 export async function generateFusedIdeas(
   eventName: string,
   submissions: LabeledSubmission[]
 ): Promise<{ provider: "gemini" | "groq"; ideas: FusedIdea[] }> {
-  const prompt = buildPrompt(eventName, submissions);
-
-  try {
-    return { provider: "gemini", ideas: await generateWithGemini(prompt) };
-  } catch (geminiErr) {
-    console.warn("Gemini failed, falling back to Groq:", geminiErr);
-    try {
-      return { provider: "groq", ideas: await generateWithGroq(prompt) };
-    } catch (groqErr) {
-      console.error("Groq also failed:", groqErr);
-      throw new Error(
-        "Both AI providers failed. Check API keys / rate limits and try again."
-      );
+  const prompt = buildFusionPrompt(eventName, submissions);
+  const { provider, data } = await withFallback<{ ideas: FusedIdea[] }>(
+    prompt,
+    FUSION_SCHEMA,
+    (parsed) => {
+      if (!Array.isArray(parsed.ideas) || parsed.ideas.length === 0) {
+        throw new Error("AI response missing 'ideas' array");
+      }
     }
-  }
+  );
+  return { provider, ideas: data.ideas };
+}
+
+// ── deep dive (build plan for one fused idea) ────────────────────────
+
+const DEEP_DIVE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    overview: { type: "STRING" },
+    mvp_features: { type: "ARRAY", items: { type: "STRING" } },
+    tech_stack: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          layer: { type: "STRING" },
+          choice: { type: "STRING" },
+          why: { type: "STRING" },
+        },
+        required: ["layer", "choice", "why"],
+      },
+    },
+    roles: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          member: { type: "STRING" },
+          focus: { type: "STRING" },
+        },
+        required: ["member", "focus"],
+      },
+    },
+    stretch_goals: { type: "ARRAY", items: { type: "STRING" } },
+    first_hour: { type: "ARRAY", items: { type: "STRING" } },
+  },
+  required: [
+    "overview",
+    "mvp_features",
+    "tech_stack",
+    "roles",
+    "stretch_goals",
+    "first_hour",
+  ],
+};
+
+function buildDeepDivePrompt(
+  eventName: string,
+  idea: FusedIdea,
+  teamLabels: string[]
+): string {
+  return `You are HiveMind's build strategist. A hackathon team at "${eventName}" just picked this fused project idea and wants a concrete plan they can start executing immediately.
+
+Project: ${idea.title}
+Hook: ${idea.tagline}
+Description: ${idea.description}
+
+Team members (use these labels EXACTLY in the roles): ${teamLabels.join(", ")}
+
+Produce a hackathon-realistic build plan. Be specific and opinionated — name real technologies, keep the MVP achievable in 24-36 hours, and split roles so every member has a clear focus matched to a distinct part of the build.
+
+Respond with ONLY valid JSON matching exactly this schema (no markdown):
+{
+  "overview": "2-3 sentences framing the build strategy",
+  "mvp_features": ["4-6 concrete features that ARE the demo"],
+  "tech_stack": [{ "layer": "e.g. Frontend", "choice": "specific tech", "why": "one short reason" }],
+  "roles": [{ "member": "team member label", "focus": "their workstream" }],
+  "stretch_goals": ["2-3 things to add only if time allows"],
+  "first_hour": ["3-4 very concrete first steps, in order"]
+}
+"roles" must contain exactly one entry per team member (${teamLabels.length} entries).`;
+}
+
+export async function generateDeepDive(
+  eventName: string,
+  idea: FusedIdea,
+  teamLabels: string[]
+): Promise<{ provider: "gemini" | "groq"; deepDive: DeepDive }> {
+  const prompt = buildDeepDivePrompt(eventName, idea, teamLabels);
+  const { provider, data } = await withFallback<DeepDive>(
+    prompt,
+    DEEP_DIVE_SCHEMA,
+    (parsed) => {
+      if (!parsed.overview || !Array.isArray(parsed.mvp_features)) {
+        throw new Error("AI response missing deep-dive fields");
+      }
+    }
+  );
+  return { provider, deepDive: data };
 }
