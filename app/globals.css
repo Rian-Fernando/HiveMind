@@ -4,14 +4,15 @@
   --font-display: var(--font-space-grotesk), system-ui, sans-serif;
   --font-accent: var(--font-instrument-serif), Georgia, serif;
 
-  --color-ink: #0c0b09;
-  --color-panel: #16130e;
-  --color-raise: #1e1a13;
-  --color-line: #2f2919;
-  --color-fog: #a89c86;
-  --color-snow: #f7f2e9;
-  --color-honey: #ffc145;
-  --color-honey-dim: #d99e2b;
+  /* Brand palette — see "HiveMind branding/BRANDING.md" */
+  --color-ink: #131110;
+  --color-panel: #1b1815;
+  --color-raise: #242019;
+  --color-line: #37312a;
+  --color-fog: #a39c90;
+  --color-snow: #f4efe7;
+  --color-honey: #f6b93b;
+  --color-honey-dim: #c8901a;
 }
 
 body {

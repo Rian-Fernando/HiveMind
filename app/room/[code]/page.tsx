@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
+import { LogoMark } from "@/components/LogoMark";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
 import type { ProgressEntry, Room } from "@/lib/types";
 
@@ -386,7 +387,7 @@ export default function RoomPage() {
                     type="checkbox"
                     checked={hideName}
                     onChange={(e) => setHideName(e.target.checked)}
-                    className="mt-1 h-4 w-4 accent-[#ffc145]"
+                    className="mt-1 h-4 w-4 accent-[#f6b93b]"
                   />
                   <span className="text-sm">
                     <span className="font-semibold">Hide my name</span>
@@ -401,7 +402,7 @@ export default function RoomPage() {
                     type="checkbox"
                     checked={hideIdea}
                     onChange={(e) => setHideIdea(e.target.checked)}
-                    className="mt-1 h-4 w-4 accent-[#ffc145]"
+                    className="mt-1 h-4 w-4 accent-[#f6b93b]"
                   />
                   <span className="text-sm">
                     <span className="font-semibold">Hide my idea</span>
@@ -525,8 +526,14 @@ function Shell({ children, code }: { children: React.ReactNode; code: string }) 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6">
       <header className="flex items-center justify-between py-8">
-        <Link href="/" className="text-lg font-bold tracking-tight">
-          Hive<span className="text-honey">Mind</span>
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 text-xl font-bold tracking-tight"
+        >
+          <LogoMark />
+          <span>
+            Hive<span className="text-honey">Mind</span>
+          </span>
         </Link>
         {code && (
           <span className="rounded-full border border-line px-3 py-1 text-xs tracking-widest text-fog">

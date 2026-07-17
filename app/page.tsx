@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LogoMark } from "@/components/LogoMark";
 
 export default function Home() {
   const router = useRouter();
@@ -42,8 +43,11 @@ export default function Home() {
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col px-6">
       {/* header */}
       <header className="flex items-center justify-between py-8">
-        <span className="text-lg font-bold tracking-tight">
-          Hive<span className="text-honey">Mind</span>
+        <span className="flex items-center gap-2.5 text-xl font-bold tracking-tight">
+          <LogoMark />
+          <span>
+            Hive<span className="text-honey">Mind</span>
+          </span>
         </span>
         <a
           href="https://rianfernando.com"
@@ -156,10 +160,6 @@ export default function Home() {
           </form>
         </div>
       </section>
-
-      <footer className="py-8 text-center text-xs text-fog/60">
-        HiveMind · Next.js + Supabase + Gemini/Groq · runs entirely on free tiers
-      </footer>
     </main>
   );
 }
