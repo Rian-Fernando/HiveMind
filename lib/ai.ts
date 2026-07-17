@@ -5,7 +5,9 @@ import { FusedIdea } from "./types";
  * Both are called over plain REST so there are no SDK dependencies.
  * If a model is ever retired, update the constants below.
  */
-const GEMINI_MODEL = "gemini-2.5-flash";
+// "latest" alias tracks Google's newest stable Flash model, so the app
+// keeps working when older model versions are retired.
+const GEMINI_MODEL = "gemini-flash-latest";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 /**
@@ -79,6 +81,39 @@ async function generateWithGemini(prompt: string): Promise<FusedIdea[]> {
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.9,
+          maxOutputTokens: 16384,
+          // Constrained decoding — guarantees structurally valid JSON.
+          // (Prompt-only JSON instructions occasionally come back malformed
+          // from thinking models, which would burn the primary provider.)
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              ideas: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    title: { type: "STRING" },
+                    tagline: { type: "STRING" },
+                    description: { type: "STRING" },
+                    elements: {
+                      type: "ARRAY",
+                      items: {
+                        type: "OBJECT",
+                        properties: {
+                          author: { type: "STRING" },
+                          element: { type: "STRING" },
+                        },
+                        required: ["author", "element"],
+                      },
+                    },
+                  },
+                  required: ["title", "tagline", "description", "elements"],
+                },
+              },
+            },
+            required: ["ideas"],
+          },
         },
       }),
     }
