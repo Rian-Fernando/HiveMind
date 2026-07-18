@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Instrument_Serif } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import {
   PORTFOLIO_URL,
   SITE_DESCRIPTION,
@@ -86,6 +87,7 @@ export default function RootLayout({
           <span className="mx-2">·</span>
           Next.js + Supabase + Gemini/Groq · runs entirely on free tiers
         </footer>
+        <Analytics />
       </body>
     </html>
   );
