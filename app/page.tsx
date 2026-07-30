@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CreateRoomPanel } from "@/components/CreateRoomPanel";
 import { LogoMark } from "@/components/LogoMark";
 import { HiveBackdrop } from "@/components/three/HiveBackdrop";
-import { FAQ, PORTFOLIO_URL, REPO_URL, SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
+import { FAQ, PORTFOLIO_URL, REPO_URL, SITE_DESCRIPTION } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "HiveMind — group ideation for hackathons, fused by AI",
@@ -111,7 +111,7 @@ export default function Home() {
         </div>
       </nav>
 
-      <main>
+      <main id="main">
         {/* ── scroll-driven story (drives the 3D scene behind it) ── */}
         <div id="story">
           <section className="mx-auto grid min-h-[86vh] max-w-5xl items-center gap-12 px-6 py-8 md:grid-cols-2">
@@ -145,6 +145,13 @@ export default function Home() {
                   Watch the 60-second demo
                 </Link>
               </div>
+              <p className="mt-10 flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-fog">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-8 w-px bg-gradient-to-b from-transparent to-honey"
+                />
+                Scroll to watch the ideas fuse
+              </p>
             </div>
             <div id="start" className="scroll-mt-24">
               <CreateRoomPanel />
@@ -259,16 +266,21 @@ export default function Home() {
           aria-labelledby="who"
           className="reveal-on-scroll mx-auto max-w-3xl px-6 py-16"
         >
-          <h2 id="who" className="text-3xl font-bold tracking-tight md:text-4xl">
-            Who it&apos;s for
-          </h2>
-          <p className="mt-6 text-lg leading-relaxed text-fog">
-            HiveMind is built for hackathon teams forming an idea in the first
-            hour, student clubs and class project groups deciding what to build,
-            and workshop facilitators who need everyone in the room contributing
-            rather than three people talking. It works for teams of 2 to 50, on
-            phones and laptops at the same time.
-          </p>
+          <div className="rounded-2xl border border-line bg-panel/75 p-8 backdrop-blur-md">
+            <h2
+              id="who"
+              className="text-3xl font-bold tracking-tight md:text-4xl"
+            >
+              Who it&apos;s for
+            </h2>
+            <p className="mt-6 text-lg leading-relaxed text-fog">
+              HiveMind is built for hackathon teams forming an idea in the first
+              hour, student clubs and class project groups deciding what to
+              build, and workshop facilitators who need everyone in the room
+              contributing rather than three people talking. It works for teams
+              of 2 to 50, on phones and laptops at the same time.
+            </p>
+          </div>
         </section>
 
         {/* ── FAQ ── */}
@@ -276,17 +288,22 @@ export default function Home() {
           aria-labelledby="faq"
           className="reveal-on-scroll mx-auto max-w-3xl px-6 py-16"
         >
-          <h2 id="faq" className="text-3xl font-bold tracking-tight md:text-4xl">
-            Frequently asked questions
-          </h2>
-          <dl className="mt-12 space-y-8">
-            {FAQ.map(({ q, a }) => (
-              <div key={q} className="border-b border-line pb-8 last:border-0">
-                <dt className="text-xl font-semibold">{q}</dt>
-                <dd className="mt-3 leading-relaxed text-fog">{a}</dd>
-              </div>
-            ))}
-          </dl>
+          <div className="rounded-2xl border border-line bg-panel/75 p-8 backdrop-blur-md">
+            <h2
+              id="faq"
+              className="text-3xl font-bold tracking-tight md:text-4xl"
+            >
+              Frequently asked questions
+            </h2>
+            <dl className="mt-10 space-y-7">
+              {FAQ.map(({ q, a }) => (
+                <div key={q} className="border-b border-line pb-7 last:border-0 last:pb-0">
+                  <dt className="text-xl font-semibold">{q}</dt>
+                  <dd className="mt-3 leading-relaxed text-fog">{a}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </section>
 
         {/* ── closing CTA ── */}
@@ -320,13 +337,6 @@ export default function Home() {
               className="text-snow underline decoration-honey underline-offset-4 hover:text-honey"
             >
               GitHub
-            </a>
-            {" · "}
-            <a
-              href={`${SITE_URL}/llms.txt`}
-              className="text-snow underline decoration-honey underline-offset-4 hover:text-honey"
-            >
-              llms.txt
             </a>
           </p>
         </section>

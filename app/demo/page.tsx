@@ -105,7 +105,7 @@ export default function DemoPage() {
         </div>
       </nav>
 
-      <main>
+      <main id="main">
         <header className="mx-auto max-w-5xl px-6 pb-10">
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-honey">
             Guided demo

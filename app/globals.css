@@ -67,9 +67,15 @@ body {
   border-color: color-mix(in srgb, var(--color-honey) 45%, var(--color-line));
 }
 
-/* Keeps story copy legible where the 3D scene blooms brightest */
+/* Keeps story copy legible where the 3D scene blooms brightest.
+   Interactive elements are excluded on purpose — a dark halo behind the
+   dark label of an amber button reads as smudged, not legible. */
 .story-copy {
   text-shadow: 0 2px 20px rgba(19, 17, 16, 0.95), 0 0 3px rgba(19, 17, 16, 0.8);
+}
+
+.story-copy :is(a, button, input, select, textarea, label) {
+  text-shadow: none;
 }
 
 /* Sections fade up as they enter — pure CSS, no JS, and only where

@@ -108,11 +108,27 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Machine-readable summary for AI answer engines. Discoverable here
+            in <head> rather than shown to readers as a link in the page. */}
+        <link
+          rel="alternate"
+          type="text/plain"
+          href="/llms.txt"
+          title="llms.txt — summary for AI"
+        />
+      </head>
       <body className={`${spaceGrotesk.variable} ${instrumentSerif.variable}`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <a
+          href="#main"
+          className="sr-only rounded-lg bg-honey px-4 py-2 font-semibold text-ink focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+        >
+          Skip to content
+        </a>
         {children}
         <footer className="mx-auto max-w-5xl px-6 py-8 text-center text-xs text-fog/70">
           <a

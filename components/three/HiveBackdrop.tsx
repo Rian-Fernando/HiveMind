@@ -6,19 +6,25 @@ import { useEffect, useRef, useState } from "react";
 const HiveScene = dynamic(() => import("./HiveScene"), { ssr: false });
 
 /**
- * Decorative WebGL backdrop for the landing story.
+ * Decorative WebGL backdrop for the landing page.
  *
  * Everything here is progressive enhancement — the page's content is
  * server-rendered HTML that sits on top. If WebGL is unavailable the
  * canvas simply never mounts, and if the visitor prefers reduced motion
  * the scene renders as a still frame at its most striking moment.
  *
- * @param storyId  id of the element whose scroll range drives the scene
+ * The scene stays alive for the whole page: the story drives it from act
+ * one to act four, and past the story it keeps idling (crystals orbiting,
+ * motes drifting) behind a progressively heavier scrim so the denser
+ * content sections stay comfortable to read.
+ *
+ * @param storyId  id of the element whose scroll range drives the story
  */
 export function HiveBackdrop({ storyId }: { storyId: string }) {
   // raw scroll position; the scene eases toward this rather than snapping to it
   const targetRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0 });
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [animate, setAnimate] = useState(true);
   const [quality, setQuality] = useState<"high" | "low">("high");
@@ -58,7 +64,8 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
     return () => reduce.removeEventListener("change", onReduceChange);
   }, []);
 
-  // scroll → story progress (skipped entirely under reduced motion)
+  // scroll → story progress, plus how far past the story we are (drives the
+  // extra scrim). Skipped entirely under reduced motion.
   useEffect(() => {
     if (!mounted || !animate) return;
     const story = document.getElementById(storyId);
@@ -69,8 +76,16 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
       frame = 0;
       const rect = story.getBoundingClientRect();
       const total = rect.height - window.innerHeight;
+      const scrolled = -rect.top;
       targetRef.current =
-        total <= 0 ? 0 : Math.min(Math.max(-rect.top / total, 0), 1);
+        total <= 0 ? 0 : Math.min(Math.max(scrolled / total, 0), 1);
+
+      // 0 while the story is on screen, ramping to 1 over the viewport after it
+      const past = Math.min(
+        Math.max((scrolled - total) / (window.innerHeight * 0.75), 0),
+        1
+      );
+      wrapRef.current?.style.setProperty("--past", past.toFixed(3));
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -86,18 +101,13 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
     };
   }, [mounted, animate, storyId]);
 
-  // pause the render loop once the story is off-screen
+  // only stop rendering when the tab isn't being looked at
   useEffect(() => {
     if (!mounted) return;
-    const story = document.getElementById(storyId);
-    if (!story) return;
-    const io = new IntersectionObserver(
-      ([entry]) => setActive(entry.isIntersecting),
-      { rootMargin: "120px" }
-    );
-    io.observe(story);
-    return () => io.disconnect();
-  }, [mounted, storyId]);
+    const onVisibility = () => setActive(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [mounted]);
 
   // subtle parallax so the scene reads as a physical space
   useEffect(() => {
@@ -116,9 +126,9 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
 
   return (
     <div
+      ref={wrapRef}
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 -z-10 transition-opacity duration-1000"
-      style={{ opacity: active ? 1 : 0 }}
+      className="pointer-events-none fixed inset-0 -z-10"
     >
       <HiveScene
         targetRef={targetRef}
@@ -127,8 +137,13 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
         quality={quality}
         active={active}
       />
-      {/* keeps overlaid text legible against the brightest bloom */}
+      {/* keeps overlaid story copy legible against the brightest bloom */}
       <div className="absolute inset-0 bg-gradient-to-b from-ink/75 via-ink/30 to-ink/85" />
+      {/* settles the scene down behind the denser content further down */}
+      <div
+        className="absolute inset-0 bg-ink"
+        style={{ opacity: "calc(var(--past, 0) * 0.8)" }}
+      />
     </div>
   );
 }
