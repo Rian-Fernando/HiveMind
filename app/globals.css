@@ -66,3 +66,35 @@ body {
   transform: translateY(-3px);
   border-color: color-mix(in srgb, var(--color-honey) 45%, var(--color-line));
 }
+
+/* Keeps story copy legible where the 3D scene blooms brightest */
+.story-copy {
+  text-shadow: 0 2px 20px rgba(19, 17, 16, 0.95), 0 0 3px rgba(19, 17, 16, 0.8);
+}
+
+/* Sections fade up as they enter — pure CSS, no JS, and only where
+   supported. Content is visible by default everywhere else. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-on-scroll {
+      animation: rise-in linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 28%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .card-lift:hover {
+    transform: none;
+  }
+}

@@ -3,6 +3,7 @@ import { Space_Grotesk, Instrument_Serif } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import {
   PORTFOLIO_URL,
+  REPO_URL,
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_TITLE,
@@ -24,8 +25,20 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: SITE_TITLE,
+  title: {
+    default: SITE_TITLE,
+    template: `%s · ${SITE_NAME}`,
+  },
   description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "group ideation",
+    "hackathon idea generator",
+    "team brainstorming tool",
+    "anonymous brainstorming",
+    "AI idea fusion",
+    "hackathon team tools",
+  ],
   alternates: {
     canonical: "/",
   },
@@ -52,13 +65,38 @@ export const viewport: Viewport = {
 
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
+  "@type": ["SoftwareApplication", "WebApplication"],
   name: SITE_NAME,
   description: SITE_DESCRIPTION,
   url: SITE_URL,
   applicationCategory: "ProductivityApplication",
-  operatingSystem: "Web",
+  operatingSystem: "Web browser",
+  browserRequirements: "Requires JavaScript and a modern web browser",
+  isAccessibleForFree: true,
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  featureList: [
+    "Anonymous or credited idea submission, chosen per participant",
+    "AI fusion combining one element from every pitch into four new ideas",
+    "Optional pitch countdown that triggers generation automatically",
+    "Live voting round with real-time tallies",
+    "AI build plans with MVP scope, tech stack, and role split",
+    "Presenter view for projectors",
+    "Markdown export of results",
+  ],
+  softwareVersion: "1.2",
+  codeRepository: REPO_URL,
+  sameAs: [REPO_URL],
   author: {
+    "@type": "Person",
+    name: "Rian Fernando",
+    url: PORTFOLIO_URL,
+    sameAs: [PORTFOLIO_URL, "https://github.com/Rian-Fernando"],
+  },
+  publisher: {
     "@type": "Person",
     name: "Rian Fernando",
     url: PORTFOLIO_URL,

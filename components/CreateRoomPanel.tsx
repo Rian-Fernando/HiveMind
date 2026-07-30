@@ -1,0 +1,186 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { readRoomHistory, type HistoryEntry } from "@/lib/device";
+
+/** The one interactive island on the landing page: create or join a room. */
+export function CreateRoomPanel() {
+  const router = useRouter();
+  const [eventName, setEventName] = useState("");
+  const [groupSize, setGroupSize] = useState(4);
+  const [useDeadline, setUseDeadline] = useState(false);
+  const [deadlineMinutes, setDeadlineMinutes] = useState(10);
+  const [joinCode, setJoinCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+
+  useEffect(() => {
+    setHistory(readRoomHistory());
+  }, []);
+
+  async function createRoom(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventName,
+          maxParticipants: groupSize,
+          deadlineMinutes: useDeadline ? deadlineMinutes : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Something went wrong");
+      // remember that this browser is the host of this room
+      localStorage.setItem(`hm-host-${data.code}`, data.hostKey);
+      router.push(`/room/${data.code}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setBusy(false);
+    }
+  }
+
+  function joinRoom(e: React.FormEvent) {
+    e.preventDefault();
+    const code = joinCode.trim().toUpperCase();
+    if (code) router.push(`/room/${code}`);
+  }
+
+  return (
+    <div className="rounded-2xl border border-line bg-panel/80 p-8 backdrop-blur-md">
+      <h2 className="text-xl font-semibold">Start a session</h2>
+      <form onSubmit={createRoom} className="mt-6 space-y-5">
+        <div>
+          <label className="mb-1.5 block text-sm text-fog" htmlFor="event">
+            Event or team name
+          </label>
+          <input
+            id="event"
+            value={eventName}
+            onChange={(e) => setEventName(e.target.value)}
+            placeholder="HackAdelphi 2026 — Team Rocket"
+            maxLength={80}
+            required
+            className="w-full rounded-lg border border-line bg-raise px-4 py-3 text-snow placeholder:text-fog/75 focus:border-honey focus:outline-none focus-visible:ring-2 focus-visible:ring-honey/60"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm text-fog" htmlFor="size">
+            How many people are pitching?
+          </label>
+          <input
+            id="size"
+            type="number"
+            min={2}
+            max={50}
+            value={groupSize}
+            onChange={(e) => setGroupSize(Number(e.target.value))}
+            required
+            className="w-full rounded-lg border border-line bg-raise px-4 py-3 text-snow focus:border-honey focus:outline-none focus-visible:ring-2 focus-visible:ring-honey/60"
+          />
+        </div>
+        <div className="rounded-xl border border-line bg-raise/50 p-4">
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span className="text-sm">
+              <span className="font-semibold">Pitch deadline</span>
+              <span className="block text-fog">
+                Optional — fusion auto-fires when time runs out
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={useDeadline}
+              onChange={(e) => setUseDeadline(e.target.checked)}
+              className="h-4 w-4 accent-[#f6b93b]"
+            />
+          </label>
+          {useDeadline && (
+            <>
+              <label className="sr-only" htmlFor="deadline">
+                Deadline length
+              </label>
+              <select
+                id="deadline"
+                value={deadlineMinutes}
+                onChange={(e) => setDeadlineMinutes(Number(e.target.value))}
+                className="mt-3 w-full rounded-lg border border-line bg-raise px-4 py-2.5 text-sm text-snow focus:border-honey focus:outline-none focus-visible:ring-2 focus-visible:ring-honey/60"
+              >
+                {[5, 10, 15, 30, 60].map((m) => (
+                  <option key={m} value={m}>
+                    {m} minutes
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full rounded-lg bg-honey px-4 py-3 font-semibold text-ink transition hover:bg-honey-dim focus-visible:ring-2 focus-visible:ring-honey focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:opacity-50"
+        >
+          {busy ? "Creating room…" : "Create room →"}
+        </button>
+        {error && (
+          <p role="alert" className="text-sm text-red-400">
+            {error}
+          </p>
+        )}
+      </form>
+
+      <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-fog">
+        <span className="h-px flex-1 bg-line" /> or join{" "}
+        <span className="h-px flex-1 bg-line" />
+      </div>
+
+      <form onSubmit={joinRoom} className="flex gap-3">
+        <label className="sr-only" htmlFor="join">
+          Room code
+        </label>
+        <input
+          id="join"
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+          placeholder="Room code, e.g. K7XM2P"
+          maxLength={6}
+          className="w-full rounded-lg border border-line bg-raise px-4 py-3 uppercase tracking-widest text-snow placeholder:normal-case placeholder:tracking-normal placeholder:text-fog/75 focus:border-honey focus:outline-none focus-visible:ring-2 focus-visible:ring-honey/60"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-lg border border-line px-5 font-semibold text-snow transition hover:border-honey hover:text-honey focus-visible:ring-2 focus-visible:ring-honey"
+        >
+          Join
+        </button>
+      </form>
+
+      {history.length > 0 && (
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-fog">
+            Your recent rooms
+          </h3>
+          <ul className="mt-3 space-y-2">
+            {history.slice(0, 5).map((h) => (
+              <li key={h.code}>
+                <Link
+                  href={`/room/${h.code}`}
+                  className="flex items-center justify-between rounded-lg border border-line px-4 py-2.5 text-sm transition hover:border-honey"
+                >
+                  <span className="truncate text-snow">{h.eventName}</span>
+                  <span className="ml-3 shrink-0 text-xs tracking-widest text-fog">
+                    {h.code}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}

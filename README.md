@@ -33,6 +33,8 @@ AI build plan per idea — MVP, stack, a role per teammate, first hour
 
 ## Features
 
+- **Guided demo** — [`/demo`](https://hivemind.rianfernando.com/demo) walks through a complete session with sample data (no database writes, no AI calls), covering all four privacy combinations
+- **Cinematic landing page** — a scroll-driven three.js scene (React Three Fiber) staging the product story in four acts: scattered minds → the hive forms → fusion ignites → four ideas crystallize
 - **Rooms** — shareable link, client-side QR code, and a readable 6-letter code
 - **Per-person privacy** — hide your name, your idea text, or both (see table below)
 - **Pitch countdown (optional)** — host sets 5–60 min; fusion auto-fires at zero with 2+ pitches
@@ -70,6 +72,7 @@ browser-readable `rooms` table.
 | AI (primary) | [Google Gemini](https://aistudio.google.com) | Free API tier, no credit card |
 | AI (fallback) | [Groq](https://console.groq.com) (Llama 3.3 70B) | Free API tier, no credit card |
 | QR codes | `qrcode.react` | Generated client-side, no service |
+| 3D landing | three.js + React Three Fiber | Open source, rendered on-device |
 
 If Gemini rate-limits during a busy event, the API route automatically retries the same prompt on Groq — participants never notice.
 
@@ -126,11 +129,32 @@ Open http://localhost:3000, create a room, then open the room link in a second b
 - **Live updates without leaking** — clients subscribe to Realtime on the `rooms` row only; every submission bumps `rooms.updated_at`, signalling clients to refetch the masked progress view. A 5-second polling fallback covers flaky connections.
 - **Models** are plain-REST calls (no SDKs): `gemini-2.5-flash` and `llama-3.3-70b-versatile`, both set as constants at the top of [`lib/ai.ts`](lib/ai.ts) if they ever need updating.
 
+## Discoverability (SEO + GEO)
+
+The landing page is fully server-rendered semantic HTML — the 3D scene is a
+decorative, `aria-hidden` canvas layered behind it, dynamically imported so it
+stays out of the initial bundle. That means search engines and AI answer
+engines read real content, not an empty shell.
+
+- `sitemap.xml`, `robots.txt`, canonical URLs, and a permanent redirect from the
+  raw `*.vercel.app` host so nothing is indexed twice
+- **`/llms.txt`** — a factual, quotable summary of what HiveMind is, following
+  the [llms.txt convention](https://llmstxt.org)
+- **AI crawlers allowed by name** — GPTBot, OAI-SearchBot, ChatGPT-User,
+  ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, CCBot and others,
+  so the app can be read and cited rather than silently skipped
+- **Structured data** — `SoftwareApplication`/`WebApplication` with author and
+  free-offer blocks, `FAQPage` on the landing page, and `HowTo` on the demo
+- One `<h1>` per page, real `<nav>`/`<main>/<footer>`, 1200×630 PNG Open Graph
+  image, and `prefers-reduced-motion` honoured across CSS and WebGL
+
 ## Project structure
 
 ```
 app/
-  page.tsx                    landing — create/join, deadline toggle, room history
+  page.tsx                    landing — server-rendered story + FAQ, 3D backdrop
+  demo/page.tsx               guided walkthrough with sample data
+  llms.txt/route.ts           machine-readable summary for AI answer engines
   room/[code]/page.tsx        the room: pitch + privacy, countdown, live feed
                               with reactions, host panel
   room/[code]/present/        presenter view for projectors
@@ -144,7 +168,11 @@ app/
                               results masked before storage
 components/
   ResultsView.tsx             results, voting, build-plan modal, export, confetti
+  CreateRoomPanel.tsx         the landing page's one interactive island
+  DemoWalkthrough.tsx         the step-through demo stages
   LogoMark.tsx                brand mark (inline SVG)
+  three/HiveScene.tsx         the scroll-driven WebGL scene
+  three/HiveBackdrop.tsx      mounts it — reduced-motion, WebGL and perf guards
 lib/
   ai.ts                       prompts + both providers + fallback (fusion & deep dive)
   device.ts                   anonymous device key + room history (localStorage)

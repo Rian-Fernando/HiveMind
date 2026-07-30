@@ -4,6 +4,9 @@ import type { Metadata } from "next";
 // engines (robots.txt also disallows /room/, but a crawler that reaches
 // one via a shared link gets an explicit noindex).
 export const metadata: Metadata = {
+  title: "Idea room",
+  description:
+    "A private HiveMind session: submit your idea, then see the fused results.",
   robots: { index: false, follow: false },
 };
 
