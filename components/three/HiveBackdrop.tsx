@@ -16,7 +16,8 @@ const HiveScene = dynamic(() => import("./HiveScene"), { ssr: false });
  * @param storyId  id of the element whose scroll range drives the scene
  */
 export function HiveBackdrop({ storyId }: { storyId: string }) {
-  const progressRef = useRef(0);
+  // raw scroll position; the scene eases toward this rather than snapping to it
+  const targetRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0 });
   const [mounted, setMounted] = useState(false);
   const [animate, setAnimate] = useState(true);
@@ -46,12 +47,12 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
     setAnimate(!reduce.matches);
     setQuality(smallOrWeak ? "low" : "high");
     // reduced motion → hold the scene at the fusion moment, no scrolling story
-    if (reduce.matches) progressRef.current = 0.68;
+    if (reduce.matches) targetRef.current = 0.68;
     setMounted(true);
 
     const onReduceChange = () => {
       setAnimate(!reduce.matches);
-      if (reduce.matches) progressRef.current = 0.68;
+      if (reduce.matches) targetRef.current = 0.68;
     };
     reduce.addEventListener("change", onReduceChange);
     return () => reduce.removeEventListener("change", onReduceChange);
@@ -68,7 +69,7 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
       frame = 0;
       const rect = story.getBoundingClientRect();
       const total = rect.height - window.innerHeight;
-      progressRef.current =
+      targetRef.current =
         total <= 0 ? 0 : Math.min(Math.max(-rect.top / total, 0), 1);
     };
     const onScroll = () => {
@@ -120,14 +121,14 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
       style={{ opacity: active ? 1 : 0 }}
     >
       <HiveScene
-        progressRef={progressRef}
+        targetRef={targetRef}
         pointerRef={pointerRef}
         animate={animate}
         quality={quality}
         active={active}
       />
       {/* keeps overlaid text legible against the brightest bloom */}
-      <div className="absolute inset-0 bg-gradient-to-b from-ink/80 via-ink/45 to-ink/90" />
+      <div className="absolute inset-0 bg-gradient-to-b from-ink/75 via-ink/30 to-ink/85" />
     </div>
   );
 }

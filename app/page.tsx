@@ -114,7 +114,7 @@ export default function Home() {
       <main>
         {/* ── scroll-driven story (drives the 3D scene behind it) ── */}
         <div id="story">
-          <section className="mx-auto grid min-h-[92vh] max-w-5xl items-center gap-14 px-6 py-12 md:grid-cols-2">
+          <section className="mx-auto grid min-h-[86vh] max-w-5xl items-center gap-12 px-6 py-8 md:grid-cols-2">
             <div className="story-copy">
               <p className="mb-4 text-xs font-medium uppercase tracking-[0.25em] text-honey">
                 For hackathons &amp; team events
@@ -151,7 +151,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="story-copy mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-20">
+          <section className="story-copy mx-auto flex min-h-[72vh] max-w-3xl flex-col justify-center px-6 py-14">
             <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
               Every pitch lands in{" "}
               <em className="font-accent italic text-honey">its own cell</em>
@@ -168,7 +168,7 @@ export default function Home() {
             </p>
           </section>
 
-          <section className="story-copy mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-20">
+          <section className="story-copy mx-auto flex min-h-[72vh] max-w-3xl flex-col justify-center px-6 py-14">
             <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
               Then the hive{" "}
               <em className="font-accent italic text-honey">fuses them</em>
@@ -184,7 +184,7 @@ export default function Home() {
             </p>
           </section>
 
-          <section className="story-copy mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-20">
+          <section className="story-copy mx-auto flex min-h-[72vh] max-w-3xl flex-col justify-center px-6 py-14">
             <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
               Four ideas the{" "}
               <em className="font-accent italic text-honey">whole team owns</em>
@@ -209,7 +209,7 @@ export default function Home() {
         {/* ── how it works ── */}
         <section
           aria-labelledby="how"
-          className="reveal-on-scroll mx-auto max-w-5xl px-6 py-24"
+          className="reveal-on-scroll mx-auto max-w-5xl px-6 py-16"
         >
           <h2 id="how" className="text-3xl font-bold tracking-tight md:text-4xl">
             How HiveMind works
@@ -233,7 +233,7 @@ export default function Home() {
         {/* ── features ── */}
         <section
           aria-labelledby="features"
-          className="reveal-on-scroll mx-auto max-w-5xl px-6 py-24"
+          className="reveal-on-scroll mx-auto max-w-5xl px-6 py-16"
         >
           <h2
             id="features"
@@ -257,7 +257,7 @@ export default function Home() {
         {/* ── who it's for ── */}
         <section
           aria-labelledby="who"
-          className="reveal-on-scroll mx-auto max-w-3xl px-6 py-24"
+          className="reveal-on-scroll mx-auto max-w-3xl px-6 py-16"
         >
           <h2 id="who" className="text-3xl font-bold tracking-tight md:text-4xl">
             Who it&apos;s for
@@ -274,7 +274,7 @@ export default function Home() {
         {/* ── FAQ ── */}
         <section
           aria-labelledby="faq"
-          className="reveal-on-scroll mx-auto max-w-3xl px-6 py-24"
+          className="reveal-on-scroll mx-auto max-w-3xl px-6 py-16"
         >
           <h2 id="faq" className="text-3xl font-bold tracking-tight md:text-4xl">
             Frequently asked questions

@@ -3,7 +3,6 @@
 import { useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
-import type { BloomEffect } from "postprocessing";
 import * as THREE from "three";
 
 /**
@@ -409,37 +408,75 @@ function Rig({ progressRef, pointerRef, animate }: SceneProps) {
   return null;
 }
 
-function Effects({ progressRef }: { progressRef: React.RefObject<number> }) {
-  const bloom = useRef<BloomEffect>(null);
-
-  useFrame(() => {
-    if (!bloom.current) return;
-    const p = progressRef.current ?? 0;
-    // the whole scene blooms hardest at the moment of fusion
-    bloom.current.intensity = 0.85 + Math.sin(phase(p, 0.5, 0.85) * Math.PI) * 1.5;
-  });
-
+/**
+ * Static effect settings on purpose.
+ *
+ * These wrappers memoise on `JSON.stringify(props)`, and under React 19 a
+ * `ref` arrives as a normal prop — so handing them a ref to the live effect
+ * (which links back into the scene graph) throws on a circular structure and
+ * takes the canvas down with it. Nothing here may be driven by a ref.
+ *
+ * The fusion flash is therefore driven physically instead: the core and motes
+ * brighten toward white during act 3, and bloom responds to that luminance on
+ * its own. That is both crash-free and closer to how real light behaves.
+ */
+function Effects() {
   return (
     <EffectComposer>
       <Bloom
-        ref={bloom}
         mipmapBlur
-        luminanceThreshold={0.32}
-        luminanceSmoothing={0.5}
-        intensity={0.9}
+        luminanceThreshold={0.28}
+        luminanceSmoothing={0.55}
+        intensity={1.15}
       />
       <Vignette offset={0.28} darkness={0.72} />
     </EffectComposer>
   );
 }
 
-export default function HiveScene({
+/**
+ * Eases the raw scroll value into the value the scene actually renders, so
+ * fast scrolling glides instead of snapping. Runs at priority -1 so every
+ * other frame callback reads the already-smoothed number.
+ */
+function ProgressDamper({
+  targetRef,
   progressRef,
+  animate,
+}: {
+  targetRef: React.RefObject<number>;
+  progressRef: React.RefObject<number>;
+  animate: boolean;
+}) {
+  useFrame((_, delta) => {
+    const target = targetRef.current ?? 0;
+    if (!animate) {
+      progressRef.current = target;
+      return;
+    }
+    // frame-rate independent damping, ~0.22s time constant
+    const k = 1 - Math.pow(0.01, Math.min(delta, 0.1));
+    progressRef.current += (target - progressRef.current) * k;
+  }, -1);
+  return null;
+}
+
+export default function HiveScene({
+  targetRef,
   pointerRef,
   animate,
   quality,
   active,
-}: SceneProps & { quality: "high" | "low"; active: boolean }) {
+}: {
+  targetRef: React.RefObject<number>;
+  pointerRef: React.RefObject<{ x: number; y: number }>;
+  animate: boolean;
+  quality: "high" | "low";
+  active: boolean;
+}) {
+  // what the scene renders — a damped follow of the raw scroll value
+  const progressRef = useRef(targetRef.current ?? 0);
+
   return (
     <Canvas
       dpr={quality === "high" ? [1, 1.8] : [1, 1.2]}
@@ -454,6 +491,12 @@ export default function HiveScene({
       <directionalLight position={[6, 8, 10]} intensity={1.5} color="#fff2d8" />
       <directionalLight position={[-8, -4, 4]} intensity={0.5} color="#6f8dff" />
 
+      <ProgressDamper
+        targetRef={targetRef}
+        progressRef={progressRef}
+        animate={animate}
+      />
+
       <Dust animate={animate} />
       <Hive progressRef={progressRef} animate={animate} />
       <Motes progressRef={progressRef} animate={animate} />
@@ -461,7 +504,7 @@ export default function HiveScene({
       <Crystals progressRef={progressRef} animate={animate} />
 
       <Rig progressRef={progressRef} pointerRef={pointerRef} animate={animate} />
-      {quality === "high" && <Effects progressRef={progressRef} />}
+      {quality === "high" && <Effects />}
     </Canvas>
   );
 }
