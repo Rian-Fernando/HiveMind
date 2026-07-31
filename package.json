@@ -13,7 +13,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@react-three/postprocessing": "^3.0.4",
-    "@supabase/supabase-js": "^2.49.4",
+    "@supabase/supabase-js": "^2.110.9",
     "@vercel/analytics": "^2.0.1",
     "canvas-confetti": "^1.9.4",
     "next": "^15.3.2",
