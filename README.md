@@ -16,7 +16,9 @@ Then the team votes, and turns the winner into a build plan.
 
 **▶ Live: [hivemind.rianfernando.com](https://hivemind.rianfernando.com)** · [Guided demo](https://hivemind.rianfernando.com/demo) · [Architecture](docs/architecture.md) · [Privacy model](docs/privacy-model.md)
 
-![HiveMind](docs/hero.png)
+<!-- Tip: a short screen capture of the fusion moment at docs/demo.gif, swapped in
+     below, would out-pull any still image on this page. -->
+![HiveMind](public/og.png)
 
 ## Why it's different
 
@@ -102,6 +104,8 @@ ping and clients refetch a masked view. Full detail in
   live counter, then oversized result cards with live tallies.
 - **Export** — copy or download the whole session as Markdown, votes and build
   plans included.
+
+![The landing page — everyone pitches, AI fuses the best of each](docs/hero.png)
 
 ![Voting on fused ideas in the guided demo](docs/demo-results.png)
 

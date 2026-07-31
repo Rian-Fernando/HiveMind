@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    background: #131110;
+    font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    position: relative;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* warm floor light, echoing the app's fusion glow */
+  .glow {
+    position: absolute;
+    width: 900px; height: 900px;
+    right: -180px; top: -160px;
+    background: radial-gradient(circle, rgba(246,185,59,0.16) 0%, rgba(246,185,59,0.05) 38%, transparent 68%);
+  }
+  .glow2 {
+    position: absolute;
+    width: 700px; height: 700px;
+    left: -260px; bottom: -320px;
+    background: radial-gradient(circle, rgba(246,185,59,0.07) 0%, transparent 65%);
+  }
+
+  /* honeycomb motif on the right — this project's equivalent of radar rings */
+  #lattice {
+    position: absolute; inset: 0;
+    -webkit-mask-image: linear-gradient(100deg, transparent 46%, #000 74%, #000 100%);
+            mask-image: linear-gradient(100deg, transparent 46%, #000 74%, #000 100%);
+  }
+
+  /* light wedge across the top-right corner */
+  .wedge {
+    position: absolute; top: 0; right: 0;
+    width: 420px; height: 630px;
+    background: linear-gradient(196deg, rgba(246,185,59,0.10) 0%, rgba(246,185,59,0.02) 42%, transparent 62%);
+    clip-path: polygon(58% 0, 100% 0, 100% 62%);
+  }
+
+  .content {
+    position: absolute;
+    left: 96px; top: 92px;
+    width: 700px;
+  }
+
+  .tile {
+    width: 132px; height: 132px;
+    border-radius: 30px;
+    background: linear-gradient(160deg, #232019 0%, #17140f 100%);
+    border: 1px solid rgba(246,185,59,0.20);
+    box-shadow: 0 0 46px rgba(246,185,59,0.20), inset 0 1px 0 rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .wordmark {
+    margin-top: 62px;
+    font-size: 94px;
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1;
+    color: #F4EFE7;
+  }
+  .wordmark .mind { color: #F6B93B; }
+
+  .desc {
+    margin-top: 26px;
+    font-size: 29px;
+    line-height: 1.42;
+    font-weight: 400;
+    color: #A39C90;
+    letter-spacing: -0.005em;
+    max-width: 720px;
+    white-space: nowrap;
+  }
+
+  .strip {
+    margin-top: 40px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 20px;
+    letter-spacing: 0.13em;
+    color: #F6B93B;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="glow2"></div>
+  <svg id="lattice" viewBox="0 0 1200 630"></svg>
+  <div class="wedge"></div>
+
+  <div class="content">
+    <div class="tile">
+      <svg viewBox="0 0 64 64" width="78" height="78" fill="none">
+        <path d="M32 5 L55.4 18.5 L55.4 45.5 L32 59 L8.6 45.5 L8.6 18.5 Z"
+              fill="none" stroke="#F4EFE7" stroke-width="4" stroke-linejoin="round"/>
+        <line x1="32" y1="19" x2="32" y2="45" stroke="#F6B93B" stroke-width="5" stroke-linecap="round"/>
+        <line x1="20.7" y1="25.5" x2="43.3" y2="38.5" stroke="#F6B93B" stroke-width="5" stroke-linecap="round"/>
+        <line x1="43.3" y1="25.5" x2="20.7" y2="38.5" stroke="#F6B93B" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div class="wordmark">Hive<span class="mind">Mind.</span></div>
+    <div class="desc" id="desc"></div>
+    <div class="strip" id="strip"></div>
+  </div>
+
+<script>
+  // filled from the render script so one template can produce several sizes
+  const params = new URLSearchParams(location.search);
+  document.getElementById("desc").innerHTML =
+    params.get("desc") ||
+    "Everyone pitches — openly or anonymously.<br>AI fuses one element from every idea into four.";
+  document.getElementById("strip").textContent =
+    params.get("strip") || "Anonymous or credited · hivemind.rianfernando.com";
+
+  // honeycomb lattice, flat-top hexagons
+  const svg = document.getElementById("lattice");
+  const NS = "http://www.w3.org/2000/svg";
+  const R = 46;
+  const dx = R * 1.5;
+  const dy = R * Math.sqrt(3);
+  for (let col = 0; col * dx < 1400; col++) {
+    for (let row = -1; row * dy < 760; row++) {
+      const cx = col * dx + 470;
+      const cy = row * dy + (col % 2 ? dy / 2 : 0) + 40;
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i;
+        pts.push(`${(cx + R * Math.cos(a)).toFixed(1)},${(cy + R * Math.sin(a)).toFixed(1)}`);
+      }
+      const poly = document.createElementNS(NS, "polygon");
+      poly.setAttribute("points", pts.join(" "));
+      poly.setAttribute("fill", "none");
+      poly.setAttribute("stroke", "#F6B93B");
+      // brighter toward the middle-right, so it reads as depth not wallpaper
+      const d = Math.hypot(cx - 900, cy - 300);
+      poly.setAttribute("stroke-opacity", Math.max(0.035, 0.26 - d / 1400).toFixed(3));
+      poly.setAttribute("stroke-width", "1.5");
+      svg.appendChild(poly);
+    }
+  }
+
+  // the spark, sitting in one cell — the fusion moment in miniature
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("transform", "translate(900,300)");
+  const core = document.createElementNS(NS, "circle");
+  core.setAttribute("r", "13");
+  core.setAttribute("fill", "#FFE6AE");
+  core.setAttribute("opacity", "0.95");
+  g.appendChild(core);
+  for (let i = 0; i < 3; i++) {
+    const a = (Math.PI / 3) * i;
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("x1", (-46 * Math.cos(a)).toFixed(1));
+    line.setAttribute("y1", (-46 * Math.sin(a)).toFixed(1));
+    line.setAttribute("x2", (46 * Math.cos(a)).toFixed(1));
+    line.setAttribute("y2", (46 * Math.sin(a)).toFixed(1));
+    line.setAttribute("stroke", "#F6B93B");
+    line.setAttribute("stroke-width", "7");
+    line.setAttribute("stroke-linecap", "round");
+    line.setAttribute("opacity", "0.92");
+    g.appendChild(line);
+  }
+  svg.appendChild(g);
+</script>
+</body>
+</html>
