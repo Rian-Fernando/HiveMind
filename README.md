@@ -1,190 +1,235 @@
-# HiveMind 🐝
+# HiveMind — group ideation, fused by AI
 
-**Group ideation for hackathons — everyone pitches (openly or anonymously), and AI fuses one element from each pitch into brand-new project ideas the whole hive owns.**
+A group-ideation tool for hackathons that **collects every teammate's idea
+privately, then fuses them.** Each person submits one pitch without seeing
+anyone else's — openly or anonymously, their choice — and when the last one
+lands, AI takes the single most distinctive element out of every submission and
+builds four new project ideas that each carry a piece of everybody's thinking.
+Then the team votes, and turns the winner into a build plan.
 
-A host creates a room, shares a link or QR code, and each teammate submits their own idea. Everyone chooses their own privacy level: pitch openly, hide your name, hide your idea text, or go fully incognito. The moment the last person submits, AI extracts the most distinctive element from every pitch and generates 4 fused project concepts — crediting only the people who opted in.
+[![CI](https://github.com/Rian-Fernando/HiveMind/actions/workflows/ci.yml/badge.svg)](https://github.com/Rian-Fernando/HiveMind/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Rian-Fernando/HiveMind/actions/workflows/codeql.yml/badge.svg)](https://github.com/Rian-Fernando/HiveMind/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Accounts required: 0](https://img.shields.io/badge/accounts-0%20required-f6b93b)](#run-it)
+[![Cost: free tiers only](https://img.shields.io/badge/cost-free%20tiers%20only-3ddc97)](#stack--free-tiers-only)
+[![Live](https://img.shields.io/badge/live-hivemind.rianfernando.com-4cc9f0)](https://hivemind.rianfernando.com)
 
-Live demo: _(add your Vercel URL here)_ · Built by [Rian Fernando](https://rianfernando.com)
+**▶ Live: [hivemind.rianfernando.com](https://hivemind.rianfernando.com)** · [Guided demo](https://hivemind.rianfernando.com/demo) · [Architecture](docs/architecture.md) · [Privacy model](docs/privacy-model.md)
 
----
+![HiveMind](docs/hero.png)
 
-## How it works
+## Why it's different
 
+Group brainstorms are decided by whoever speaks first and loudest. Every quiet
+person's idea evaporates, and the team converges on the first plausible thing
+said out loud. HiveMind removes the ordering problem entirely: pitches are
+collected in parallel and in private, and fusion is **mechanical — every
+participant's idea is required to appear in every generated concept.** The
+results show which element came from whom, so nobody has to argue that they
+contributed.
+
+The part that makes people actually use it is the privacy toggle. Each person
+independently decides whether their name and their pitch text are public. A
+fully anonymous pitch still shapes all four results — it just never appears in
+the credits. That is enforced on the server, not in the UI: the browser has no
+read access to pitches at all, and the AI is handed placeholder labels instead
+of hidden participants' names.
+
+And it deliberately stops short of deciding for you. The AI produces raw
+material; the team argues, votes, and commits. Nothing auto-advances past the
+reveal.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Clients["Participants · phones and laptops"]
+    H["Host<br/>creates room"]
+    P["Pitchers<br/>one idea each"]
+  end
+
+  subgraph App["Next.js 15 · Vercel"]
+    API["API routes<br/>service-role only"]
+    MASK["Privacy masking"]
+  end
+
+  subgraph Data["Supabase"]
+    DB[("Postgres<br/>rooms · ideas · votes")]
+    RT["Realtime<br/>rooms row only"]
+  end
+
+  subgraph AI["AI · free tiers"]
+    GEM["Gemini<br/>primary"]
+    GRQ["Groq · Llama 3.3<br/>fallback"]
+  end
+
+  H --> API
+  P --> API
+  API -->|writes| DB
+  DB --> RT
+  RT -->|"content-free ping"| Clients
+  Clients -->|"masked view"| MASK
+  API -->|"placeholder labels"| GEM
+  GEM -.->|"rate limit / bad JSON"| GRQ
+  GEM --> MASK
+  GRQ --> MASK
+  MASK -->|"credits per privacy choice"| DB
 ```
-Host creates room ──► link + QR + 6-letter code (+ optional pitch countdown)
-        │
-        ▼
-Teammates open link ──► each pitches + picks privacy:
-        │                 name shown/hidden · idea shown/hidden
-        ▼  (live pitch feed + 🔥💡😂 reactions via Supabase Realtime)
-        │
-Last idea lands (or the countdown hits zero, or the host forces it)
-        │
-        ▼
-Gemini (primary) ──fails?──► Groq (fallback)
-        │
-        ▼
-4 fused ideas, credited per each person's privacy choice
-        │
-        ▼
-The human part: argue, vote (live tallies, 👑 leader), and pull up an
-AI build plan per idea — MVP, stack, a role per teammate, first hour
-```
 
-## Features
+The browser can read exactly one table (`rooms`, which holds nothing sensitive)
+and write nothing. Every mutation goes through an API route holding the
+service-role key. Realtime publishes only the `rooms` row, so pitch text is
+never broadcast — writes bump `updated_at` as a content-free "something changed"
+ping and clients refetch a masked view. Full detail in
+[`docs/architecture.md`](docs/architecture.md).
 
-- **Guided demo** — [`/demo`](https://hivemind.rianfernando.com/demo) walks through a complete session with sample data (no database writes, no AI calls), covering all four privacy combinations
-- **Cinematic landing page** — a scroll-driven three.js scene (React Three Fiber) staging the product story in four acts: scattered minds → the hive forms → fusion ignites → four ideas crystallize
-- **Rooms** — shareable link, client-side QR code, and a readable 6-letter code
-- **Per-person privacy** — hide your name, your idea text, or both (see table below)
-- **Pitch countdown (optional)** — host sets 5–60 min; fusion auto-fires at zero with 2+ pitches
-- **Live pitch feed** — visible pitches stream in with emoji reactions while you wait
-- **AI fusion** — one element from every pitch, combined into 4 new concepts
-- **Voting round** — one changeable vote per device, live tallies, leader crowned 👑
-- **Build plans** — per-idea deep dive (MVP features, tech stack, role split, stretch goals, first hour) generated on demand and cached for the whole room, shown in a modal
-- **Presenter view** — `/room/CODE/present`: giant QR + live counter for a projector, then big result cards with live votes
-- **Export** — copy results as Markdown or download a `.md`, including votes and build plans
-- **Confetti & polish** — reveal animation, staggered cards, recent-rooms history on the landing page
+## What it does
+
+- **Rooms in one step** — name the event, set the group size (2–50), optionally
+  set a pitch countdown. Share a link, a QR code, or a six-letter code.
+- **Private pitching** — one idea per person, submitted without seeing the
+  others. Two independent toggles hide your name, your idea text, or both.
+- **Live room** — visible pitches stream in with 🔥💡😂 reactions and a progress
+  bar; a countdown, when set, fires fusion automatically at zero.
+- **Fusion** — one AI call per room extracts the most distinctive element of each
+  pitch and combines them into four hackathon-scoped concepts, credited
+  according to each person's privacy choice.
+- **Voting** — one changeable vote per device, live tallies, leading idea crowned.
+- **Build plans** — per idea, on demand: MVP features, a stack with reasoning, a
+  role for each teammate, stretch goals, and a first-hour checklist. Cached
+  room-wide, so only the first click pays for it.
+- **Presenter view** — `/room/CODE/present` for a projector: a large QR code and
+  live counter, then oversized result cards with live tallies.
+- **Export** — copy or download the whole session as Markdown, votes and build
+  plans included.
+
+![Voting on fused ideas in the guided demo](docs/demo-results.png)
 
 ## The privacy model
 
-Each participant gets two independent toggles at submission time:
-
-| Hide name | Hide idea | In the room (live feed) | In the results |
+| Hide name | Hide idea | In the live room | In the results |
 |:---:|:---:|---|---|
-| — | — | "Maya — food-waste map…" | **Maya · real-time maps** |
-| ✅ | — | "Anonymous — food-waste map…" | **Anonymous · real-time maps** |
-| — | ✅ | "Maya — 🔒 pitch kept private" | **Maya · secret ingredient 🤫** |
-| ✅ | ✅ | "Anonymous — 🔒 pitch kept private" | *(no credit at all — the idea still silently shapes every concept)* |
+| — | — | `Maya — food-waste map…` | **Maya · real-time maps** |
+| ✅ | — | `Anonymous — food-waste map…` | **Anonymous · real-time maps** |
+| — | ✅ | `Maya — 🔒 pitch kept private` | **Maya · secret ingredient 🤫** |
+| ✅ | ✅ | `Anonymous — 🔒 pitch kept private` | *no credit at all* |
 
-Privacy is enforced **server-side**, not just visually: the `ideas` table has no
-read access from the browser. Every read flows through `/api/progress`, which
-masks per-row flags, the AI never receives a hidden participant's real name
-(it sees `Anonymous #2`), and results are masked *before* being stored in the
-browser-readable `rooms` table.
+Enforced at four points: no browser read access to the `ideas` table, a masking
+route for every read, placeholder labels in the AI prompt, and masking of the
+AI's output *before* it is stored anywhere browser-readable. The limits of the
+model are written down honestly in
+[`docs/privacy-model.md`](docs/privacy-model.md) — including the fact that small
+rooms leak by arithmetic and that the operator can always read raw pitches.
 
-## Stack — 100% free tiers
+## Stack — free tiers only
 
-| Layer | Service | Free tier |
+| Layer | Choice | Free tier |
 |---|---|---|
-| Frontend + API | [Next.js 15](https://nextjs.org) on [Vercel](https://vercel.com) | Hobby plan, free forever |
-| Database + Realtime | [Supabase](https://supabase.com) | 500 MB Postgres, Realtime included |
-| AI (primary) | [Google Gemini](https://aistudio.google.com) | Free API tier, no credit card |
-| AI (fallback) | [Groq](https://console.groq.com) (Llama 3.3 70B) | Free API tier, no credit card |
-| QR codes | `qrcode.react` | Generated client-side, no service |
-| 3D landing | three.js + React Three Fiber | Open source, rendered on-device |
+| Frontend + API | Next.js 15 (App Router), React 19 on Vercel | Hobby, free |
+| Database + realtime | Supabase Postgres | 500 MB, Realtime included |
+| AI — primary | Google Gemini | free API tier, no card |
+| AI — fallback | Groq (Llama 3.3 70B) | free API tier, no card |
+| 3D landing | three.js + React Three Fiber | open source, renders on-device |
+| QR codes | `qrcode.react` | generated client-side, no service |
 
-If Gemini rate-limits during a busy event, the API route automatically retries the same prompt on Groq — participants never notice.
+Nothing here bills. Fusion runs once per room and a build plan once per idea, so
+a busy event costs a handful of AI calls rather than one per person. Attribution
+for every third-party service is in [`NOTICE.md`](NOTICE.md).
 
----
+![The fusion beat of the scroll-driven landing scene](docs/fusion.jpg)
 
-## Setup (~10 minutes)
+## Run it
 
-### 1. Supabase
-
-1. Create a free project at [supabase.com](https://supabase.com)
-2. Open **SQL Editor → New query**, paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**
-3. Go to **Project Settings → API** and copy:
-   - Project URL
-   - `anon` public key
-   - `service_role` key (keep this secret — server only)
-
-### 2. AI keys (both free, no credit card)
-
-- **Gemini**: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → Create API key
-- **Groq**: [console.groq.com/keys](https://console.groq.com/keys) → Create API key
-
-### 3. Environment
+Two free accounts (Supabase, plus Google AI Studio and/or Groq for keys), about
+ten minutes.
 
 ```bash
-cp .env.example .env.local
-# fill in the 5 values
-```
-
-### 4. Run
-
-```bash
+git clone https://github.com/Rian-Fernando/HiveMind.git
+cd HiveMind
 npm install
+cp .env.example .env.local     # fill in the five values
 npm run dev
 ```
 
-Open http://localhost:3000, create a room, then open the room link in a second browser (or incognito window) to simulate a teammate.
+**1 — Supabase.** Create a free project, open **SQL Editor → New query**, paste
+[`supabase/schema.sql`](supabase/schema.sql) and run it. Copy the project URL,
+the `anon` key and the `service_role` key from **Project Settings → API**.
+(Upgrading an older deployment? Run
+[`supabase/migration-002-features.sql`](supabase/migration-002-features.sql)
+instead.)
 
----
+**2 — AI keys.** [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+for Gemini, [console.groq.com/keys](https://console.groq.com/keys) for Groq.
+Either one alone works; with both, Groq covers Gemini's rate limit.
 
-## Deploy to Vercel (free)
+**3 — Run.** `npm run dev`, then open the room link in a second browser or an
+incognito window to play a teammate.
 
-1. Push to GitHub (this repo: [Rian-Fernando/HiveMind](https://github.com/Rian-Fernando/HiveMind))
-2. [vercel.com/new](https://vercel.com/new) → import the repo (defaults are fine)
-3. Add the 5 environment variables from `.env.local` in **Project → Settings → Environment Variables**
-4. Deploy — your shareable room links and QR codes now work on any phone
+**Deploy:** import the repo at [vercel.com/new](https://vercel.com/new), add the
+same five environment variables, deploy. Set your custom domain as the primary
+so the canonical URL and the `*.vercel.app` redirect line up.
 
----
-
-## Architecture notes
-
-- **All writes go through API routes** using the Supabase service-role key. The browser's anon key can only read the `rooms` table (which contains nothing sensitive) — the `ideas` table is fully private to the server.
-- **Host authentication** — room creation returns a one-time host key stored only in the host's browser; the database stores just its SHA-256 hash, so even full read access to the DB can't impersonate a host.
-- **Race-safe generation** — when the room fills, every connected client fires the generate call, but a conditional `status: open → generating` update in Postgres guarantees exactly one AI run. A stale `generating` claim (crashed function) auto-expires after 2 minutes.
-- **Live updates without leaking** — clients subscribe to Realtime on the `rooms` row only; every submission bumps `rooms.updated_at`, signalling clients to refetch the masked progress view. A 5-second polling fallback covers flaky connections.
-- **Models** are plain-REST calls (no SDKs): `gemini-2.5-flash` and `llama-3.3-70b-versatile`, both set as constants at the top of [`lib/ai.ts`](lib/ai.ts) if they ever need updating.
-
-## Discoverability (SEO + GEO)
-
-The landing page is fully server-rendered semantic HTML — the 3D scene is a
-decorative, `aria-hidden` canvas layered behind it, dynamically imported so it
-stays out of the initial bundle. That means search engines and AI answer
-engines read real content, not an empty shell.
-
-- `sitemap.xml`, `robots.txt`, canonical URLs, and a permanent redirect from the
-  raw `*.vercel.app` host so nothing is indexed twice
-- **`/llms.txt`** — a factual, quotable summary of what HiveMind is, following
-  the [llms.txt convention](https://llmstxt.org)
-- **AI crawlers allowed by name** — GPTBot, OAI-SearchBot, ChatGPT-User,
-  ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, CCBot and others,
-  so the app can be read and cited rather than silently skipped
-- **Structured data** — `SoftwareApplication`/`WebApplication` with author and
-  free-offer blocks, `FAQPage` on the landing page, and `HowTo` on the demo
-- One `<h1>` per page, real `<nav>`/`<main>/<footer>`, 1200×630 PNG Open Graph
-  image, and `prefers-reduced-motion` honoured across CSS and WebGL
+```bash
+npm run dev        # local dev server
+npm run build      # production build
+npm run typecheck  # tsc --noEmit — same check CI runs
+```
 
 ## Project structure
 
 ```
 app/
   page.tsx                    landing — server-rendered story + FAQ, 3D backdrop
-  demo/page.tsx               guided walkthrough with sample data
+  demo/page.tsx               guided walkthrough on sample data
   llms.txt/route.ts           machine-readable summary for AI answer engines
   room/[code]/page.tsx        the room: pitch + privacy, countdown, live feed
-                              with reactions, host panel
   room/[code]/present/        presenter view for projectors
-  api/rooms/route.ts          POST — create room (code + hashed host key + deadline)
+  api/rooms/route.ts          POST — create room (code + hashed host key)
   api/ideas/route.ts          POST — submit an idea (validation + privacy flags)
   api/progress/route.ts       GET  — privacy-masked pitches + reaction tallies
   api/reactions/route.ts      POST — toggle 🔥💡😂 on a visible pitch
-  api/votes/route.ts          GET/POST — live tallies, one changeable vote per device
-  api/deepdive/route.ts       POST — AI build plan per idea, cached room-wide
-  api/generate/route.ts       POST — race-safe AI fusion, Gemini → Groq,
-                              results masked before storage
+  api/votes/route.ts          GET/POST — live tallies, one vote per device
+  api/generate/route.ts       POST — race-safe fusion, Gemini → Groq, masked
+  api/deepdive/route.ts       POST — build plan per idea, cached room-wide
 components/
   ResultsView.tsx             results, voting, build-plan modal, export, confetti
   CreateRoomPanel.tsx         the landing page's one interactive island
-  DemoWalkthrough.tsx         the step-through demo stages
-  LogoMark.tsx                brand mark (inline SVG)
+  DemoWalkthrough.tsx         the demo stages
   three/HiveScene.tsx         the scroll-driven WebGL scene
-  three/HiveBackdrop.tsx      mounts it — reduced-motion, WebGL and perf guards
+  three/HiveBackdrop.tsx      mounts it — WebGL, reduced-motion and perf guards
 lib/
-  ai.ts                       prompts + both providers + fallback (fusion & deep dive)
-  device.ts                   anonymous device key + room history (localStorage)
-  supabaseBrowser.ts          anon client (reads rooms only)
+  ai.ts                       prompts, both providers, fallback
+  device.ts                   anonymous device key + room history
   supabaseAdmin.ts            service-role client (API routes only)
+  supabaseBrowser.ts          anon client (reads rooms only)
 supabase/
-  schema.sql                  full schema for fresh installs
-  migration-002-features.sql  upgrade for projects created before voting/reactions
+  schema.sql                  full schema for a fresh project
+  migration-002-features.sql  upgrade path for earlier deployments
+docs/
+  architecture.md             trust boundaries, exactly-once generation, AI layer
+  privacy-model.md            the four modes, enforcement points, and the limits
 ```
 
-## Free-tier limits worth knowing
+## Discoverability (SEO + GEO)
 
-- **Gemini free tier** allows a limited number of requests/day — plenty for events, since HiveMind makes exactly **one** AI call per room (not per participant).
-- **Supabase free projects pause after 7 days of inactivity** — just hit "Restore" in the dashboard before an event, or open the app once a week.
-- **Vercel Hobby** functions run up to 60s — generation typically takes 3–10s.
+The landing page is fully server-rendered semantic HTML — the 3D scene is a
+decorative, `aria-hidden` canvas behind it, dynamically imported so first load
+stays around 110 kB. Search engines and AI answer engines read real content, not
+an empty shell.
+
+- `sitemap.xml`, `robots.txt`, canonical URLs, and a permanent redirect from the
+  raw `*.vercel.app` host
+- [`/llms.txt`](https://hivemind.rianfernando.com/llms.txt) following the
+  [llms.txt convention](https://llmstxt.org), advertised in `<head>`
+- Fourteen AI crawlers allowed by name — GPTBot, OAI-SearchBot, ClaudeBot,
+  PerplexityBot, Google-Extended, Applebot-Extended, CCBot and others
+- `SoftwareApplication`, `FAQPage` and `HowTo` structured data
+- One `<h1>` per page, real landmarks, a 1200×630 PNG social image, and
+  `prefers-reduced-motion` honoured across both CSS and WebGL
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). Third-party attribution in
+[`NOTICE.md`](NOTICE.md); release history in [`CHANGELOG.md`](CHANGELOG.md).
+
+Built by [Rian Fernando](https://rianfernando.com).

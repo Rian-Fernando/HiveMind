@@ -138,7 +138,7 @@ export function HiveBackdrop({ storyId }: { storyId: string }) {
         active={active}
       />
       {/* keeps overlaid story copy legible against the brightest bloom */}
-      <div className="absolute inset-0 bg-gradient-to-b from-ink/75 via-ink/30 to-ink/85" />
+      <div className="absolute inset-0 bg-gradient-to-b from-ink/75 via-ink/45 to-ink/85" />
       {/* settles the scene down behind the denser content further down */}
       <div
         className="absolute inset-0 bg-ink"

@@ -71,7 +71,10 @@ body {
    Interactive elements are excluded on purpose — a dark halo behind the
    dark label of an amber button reads as smudged, not legible. */
 .story-copy {
-  text-shadow: 0 2px 20px rgba(19, 17, 16, 0.95), 0 0 3px rgba(19, 17, 16, 0.8);
+  text-shadow:
+    0 2px 20px rgba(19, 17, 16, 0.98),
+    0 0 8px rgba(19, 17, 16, 0.92),
+    0 0 3px rgba(19, 17, 16, 0.85);
 }
 
 .story-copy :is(a, button, input, select, textarea, label) {
