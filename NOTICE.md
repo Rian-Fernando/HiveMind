@@ -16,6 +16,7 @@ any of them.**
 | QR codes | [qrcode.react](https://github.com/zpao/qrcode.react) | ISC — generated on-device, no service call |
 | Confetti | [canvas-confetti](https://github.com/catdad/canvas-confetti) | ISC |
 | Typefaces | Space Grotesk, Instrument Serif (Google Fonts) | SIL Open Font License 1.1 |
+| Feedback widget | [Feedex](https://feedex.rianfernando.com) | MIT · optional, loads only when `NEXT_PUBLIC_FEEDEX_KEY` is set |
 
 Brand assets in `public/brand/` and the HiveMind name and mark are © 2026 Rian
 Fernando and are not covered by the MIT grant.

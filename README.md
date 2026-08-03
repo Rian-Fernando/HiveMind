@@ -135,6 +135,7 @@ rooms leak by arithmetic and that the operator can always read raw pitches.
 | AI — fallback | Groq (Llama 3.3 70B) | free API tier, no card |
 | 3D landing | three.js + React Three Fiber | open source, renders on-device |
 | QR codes | `qrcode.react` | generated client-side, no service |
+| Feedback | [Feedex](https://feedex.rianfernando.com) | one script tag, optional |
 
 Nothing here bills. Fusion runs once per room and a build plan once per idea, so
 a busy event costs a handful of AI calls rather than one per person. Attribution
@@ -172,6 +173,11 @@ incognito window to play a teammate.
 **Deploy:** import the repo at [vercel.com/new](https://vercel.com/new), add the
 same five environment variables, deploy. Set your custom domain as the primary
 so the canonical URL and the `*.vercel.app` redirect line up.
+
+**Feedback (optional).** Setting `NEXT_PUBLIC_FEEDEX_KEY` to a project key from
+[Feedex](https://feedex.rianfernando.com) puts a feedback button on every page
+except the presenter view, with browser and page context attached to each
+report. Leave it unset — the default — and nothing is rendered or requested.
 
 ```bash
 npm run dev        # local dev server

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Instrument_Serif } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { FeedexWidget } from "@/components/FeedexWidget";
 import {
   PORTFOLIO_URL,
   REPO_URL,
@@ -142,6 +143,9 @@ export default function RootLayout({
           Next.js + Supabase + Gemini/Groq · runs entirely on free tiers
         </footer>
         <Analytics />
+        {process.env.NEXT_PUBLIC_FEEDEX_KEY && (
+          <FeedexWidget publicKey={process.env.NEXT_PUBLIC_FEEDEX_KEY} />
+        )}
       </body>
     </html>
   );
