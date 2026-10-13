@@ -6,9 +6,12 @@ import { DeepDive, FusedIdea } from "./types";
  * If a model is ever retired, update the constants below.
  */
 // "latest" alias tracks Google's newest stable Flash model, so the app
-// keeps working when older model versions are retired.
+// keeps working when older model versions are retired. (It has already
+// carried us from 2.5-flash through to 3.8-flash with no code change.)
 const GEMINI_MODEL = "gemini-flash-latest";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+// Groq has no "latest" alias, so this one is pinned and must be checked
+// when a model is retired — Llama 3.3 was decommissioned under us.
+const GROQ_MODEL = "openai/gpt-oss-120b";
 
 /**
  * `label` is already privacy-masked by the caller: real name for public

@@ -38,7 +38,7 @@ HiveMind exists because group brainstorms are usually dominated by whoever speak
 
 - Next.js 15 (App Router) and React 19, deployed on Vercel
 - Supabase Postgres with Realtime for live room state
-- Google Gemini as the primary AI provider, with automatic Groq (Llama 3.3) fallback
+- Google Gemini as the primary AI provider, with automatic Groq (gpt-oss-120b) fallback
 - Tailwind CSS v4, three.js and React Three Fiber for the landing visuals
 - TypeScript throughout
 

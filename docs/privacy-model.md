@@ -74,8 +74,19 @@ Stated plainly, because a privacy claim is only useful with its limits attached:
   service-role key — the person deploying the app — can read raw pitches. This
   protects participants from each other, not from the operator.
 - **The AI provider sees pitch text.** Hidden *names* never reach Gemini or
-  Groq, but hidden *idea text* does, because the idea is what gets fused. It is
-  covered by that provider's API terms.
+  Groq, but hidden *idea text* does, because the idea is what gets fused.
+  This deployment runs on Google's **unpaid** Gemini tier, whose terms state
+  that submitted content and responses are used to improve Google's products
+  and machine learning models, and that **human reviewers may read and annotate
+  API input and output** (disconnected from the account and API key first).
+  Google's own guidance for that tier is explicit: *"Do not submit sensitive,
+  confidential, or personal information to the Unpaid Services."* The pitch form
+  says so at the point of submission, and it is the reason this is a tool for
+  hackathon ideas rather than anything proprietary.
+- **Serving EEA/UK users requires the paid tier.** Google's terms require apps
+  made available to users in the EEA, Switzerland or the UK to use the Paid
+  Services. A fork serving those regions should move the Gemini key to a billed
+  project, which also removes the training and human-review terms above.
 - **Small rooms leak by arithmetic.** In a three-person room where two pitches
   are public, the third is identifiable by elimination. Anonymity is meaningful
   in proportion to room size.

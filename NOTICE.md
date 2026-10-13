@@ -10,7 +10,7 @@ any of them.**
 | Hosting & framework | [Next.js](https://nextjs.org) on [Vercel](https://vercel.com) | MIT · Vercel Hobby (free) |
 | Database & realtime | [Supabase](https://supabase.com) (Postgres) | Apache-2.0 client · free tier |
 | AI — primary | [Google Gemini API](https://ai.google.dev) | Google APIs Terms of Service · free tier |
-| AI — fallback | [Groq](https://groq.com) (Llama 3.3 70B) | Groq Terms of Use · free tier |
+| AI — fallback | [Groq](https://groq.com)  (gpt-oss-120b) | Groq Terms of Use · free tier |
 | 3D rendering | [three.js](https://threejs.org), [React Three Fiber](https://github.com/pmndrs/react-three-fiber), [drei](https://github.com/pmndrs/drei), [postprocessing](https://github.com/pmndrs/postprocessing) | MIT |
 | Styling | [Tailwind CSS](https://tailwindcss.com) | MIT |
 | QR codes | [qrcode.react](https://github.com/zpao/qrcode.react) | ISC — generated on-device, no service call |
@@ -24,7 +24,10 @@ Fernando and are not covered by the MIT grant.
 ## Content and privacy
 
 HiveMind stores the ideas participants submit in order to generate results, and
-sends them to the AI provider named above to do so. Participants who mark a
+sends them to the AI provider named above to do so. On Google's unpaid Gemini
+tier that content may be used to improve Google's models and may be read by
+human reviewers, per the [Gemini API terms](https://ai.google.dev/gemini-api/terms);
+serving users in the EEA, Switzerland or the UK requires the paid tier. Participants who mark a
 pitch private are never identified in stored results — see
 [`docs/privacy-model.md`](docs/privacy-model.md) for exactly what is kept, what
 is sent, and what is masked.

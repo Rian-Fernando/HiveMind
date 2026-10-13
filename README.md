@@ -62,7 +62,7 @@ flowchart LR
 
   subgraph AI["AI · free tiers"]
     GEM["Gemini<br/>primary"]
-    GRQ["Groq · Llama 3.3<br/>fallback"]
+    GRQ["Groq · gpt-oss-120b<br/>fallback"]
   end
 
   H --> API
@@ -132,7 +132,7 @@ rooms leak by arithmetic and that the operator can always read raw pitches.
 | Frontend + API | Next.js 15 (App Router), React 19 on Vercel | Hobby, free |
 | Database + realtime | Supabase Postgres | 500 MB, Realtime included |
 | AI — primary | Google Gemini | free API tier, no card |
-| AI — fallback | Groq (Llama 3.3 70B) | free API tier, no card |
+| AI — fallback | Groq (gpt-oss-120b) | free API tier, no card |
 | 3D landing | three.js + React Three Fiber | open source, renders on-device |
 | QR codes | `qrcode.react` | generated client-side, no service |
 | Feedback | [Feedex](https://feedex.rianfernando.com) | one script tag, optional |

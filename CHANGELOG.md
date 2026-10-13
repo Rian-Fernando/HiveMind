@@ -4,6 +4,36 @@ All notable changes to HiveMind are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project aims to follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Maintenance pass after an idle period.
+
+### Fixed
+- Groq fallback was dead: `llama-3.3-70b-versatile` has been decommissioned,
+  so every fallback attempt returned "model does not exist". Switched to
+  `openai/gpt-oss-120b`, verified to hold the `Anonymous #n` labels the
+  privacy masking depends on. Gemini needed no change — the
+  `gemini-flash-latest` alias has carried the app from 2.5-flash to
+  3.8-flash on its own.
+
+### Security
+- Patched a critical Next.js advisory (unauthenticated RCE) plus high
+  advisories in nanoid, sharp and source-map-js, all semver-safe. The RCE
+  surface did not apply here — it needs the image optimizer, and this app
+  uses no `next/image` — but the patch is free. Two advisories remain,
+  both reaching postcss bundled inside Next and both requiring
+  attacker-supplied CSS, which this app never parses.
+- Enabled Dependabot vulnerability alerts on the repository.
+
+### Changed
+- Documented, at the point of submission and in the privacy docs, that
+  pitches are sent to a third-party AI service — and that Google's unpaid
+  Gemini tier may use submitted content to train its models and may have
+  human reviewers read it. Noted that serving EEA/Switzerland/UK users
+  requires Google's paid tier.
+- Dependency refresh within semver: React 19.3, three.js stack, Supabase
+  client.
+
 ## [1.0.0] — 2026-07-30
 
 First tagged release. HiveMind is a group-ideation tool for hackathons: everyone

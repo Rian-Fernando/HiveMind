@@ -31,7 +31,7 @@ flowchart LR
 
   subgraph AI["AI · free tiers"]
     GEM["Gemini<br/>primary"]
-    GRQ["Groq · Llama 3.3<br/>fallback"]
+    GRQ["Groq · gpt-oss-120b<br/>fallback"]
   end
 
   H --> R

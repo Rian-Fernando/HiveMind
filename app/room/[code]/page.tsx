@@ -420,6 +420,11 @@ export default function RoomPage() {
                     shown — but the AI still weaves your idea into the results. 🐝
                   </p>
                 )}
+                <p className="mt-3 border-t border-line pt-3 text-xs text-fog">
+                  Whatever you write is sent to a third-party AI service to
+                  generate the results, so keep confidential and personal
+                  details out of your pitch.
+                </p>
               </fieldset>
 
               <button
